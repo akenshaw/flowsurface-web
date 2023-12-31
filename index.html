@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowSurface Test Suite</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <button class="button" id="btn1">Go Back</button>
+        <button class="button" id="btn2" onclick="showMenu()">Start a Canvas</button>
+        <div id="menu" style="display: none;">
+            <tr>
+                <td><button id="tbl-btn1" class="tableButton" onclick="startCanvas1()">Canvas 1</button></td>
+                <td><button id="tbl-btn2" class="tableButton" onclick="startCanvas2()">Canvas 2</button></td>
+                <td><button id="tbl-btn3" class="tableButton" onclick="startCanvas3()">Canvas 3</button></td>
+                <td><button id="tbl-btn4" class="tableButton" onclick="startCanvas4()">Canvas 4</button></td>
+            </tr>
+        </div>
+        <button class="button" id="btn3">Test Button</button>
+        <button class="button" id="btn4">Settings</button>
+    </nav>
+    <div id="menu" style="display: none;">
+        <p>Settings</p>
+    </div>
+    <div>
+        <canvas id="canvas1"></canvas>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
