@@ -81,6 +81,16 @@ nav {
   left: 85%; 
   top: 15vh;
 }
+#settings-menu {
+  position: absolute;
+  background-color: #212121;
+  border-radius: 12px;
+  padding: 1.2rem; 
+  color: #c8c8c8;
+  border: 1px solid #3c3c3c;
+  left: 85%; 
+  top: 65vh;
+}
 .button:hover {
   background: #c8c8c8;
   color: #212121;
