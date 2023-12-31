@@ -75,3 +75,59 @@ export class FlowFieldEffect {
         this.flowFieldAnimation = requestAnimationFrame(this.animate.bind(this));
     }
 }
+export class FlowFieldEffect2 {
+    flowFieldAnimation
+    #ctx;
+    #width;
+    #height;
+    constructor(ctx, width, height) {
+        this.#ctx = ctx;
+        this.#ctx.strokeStyle = "#C8C8C8";
+        this.#ctx.lineWidth = 5;
+        
+        this.#width = width;
+        this.#height = height;
+                
+        this.lastTime = 0;
+        this.interval = 1000/60;
+        this.timer = 0;
+
+        this.cellSize = 10;
+        this.gradient;
+
+        this.#createGradient();
+        this.#ctx.strokeStyle = this.gradient;
+    }
+    #createGradient() {
+        this.gradient = this.#ctx.createLinearGradient(0, 0, this.#width, this.#height);
+        this.gradient.addColorStop(0, "#FF0000");
+        this.gradient.addColorStop(0.25, "#FFFF00");
+        this.gradient.addColorStop(0.5, "#00FF00");
+        this.gradient.addColorStop(0.75, "#00FFFF");
+        this.gradient.addColorStop(1, "#0000FF");
+    }
+    #drawLine(angle, x, y) {
+        this.#ctx.beginPath();
+        this.#ctx.moveTo(x, y);
+        this.#ctx.lineTo(x + angle, y + angle);
+        this.#ctx.stroke();
+    }
+    animate(timeStamp) {
+        const deltaTime = timeStamp - this.lastTime;
+        this.lastTime = timeStamp;
+        if (this.timer > this.interval) {
+            this.#ctx.clearRect(0, 0, this.#width, this.#height);
+            
+            for (let y = 0; y < this.#height; y += this.cellSize) {
+                for (let x = 0; x < this.#width; x += this.cellSize) {
+                    const angle = Math.cos(x) + Math.sin(y);
+                    this.#drawLine(angle, x, y);
+                }
+            }            
+            this.timer = 0;
+        } else {
+            this.timer += deltaTime;
+        }
+        this.flowFieldAnimation = requestAnimationFrame(this.animate.bind(this));
+    }
+}
