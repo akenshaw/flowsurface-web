@@ -4,6 +4,7 @@
   box-sizing: border-box;
   font-size: 16px;
   font-family: 'Fira Code', monospace;
+  user-select: none;
 }
 body {
   background: #212121;
@@ -43,7 +44,7 @@ nav {
   border-radius: 8px;
   outline: none;
   cursor: pointer;
-  box-shadow: 0 0 5px #00000032;
+  box-shadow: 0 0 20px #00000050;
   margin: 0.4rem 0;
 }
 #btn4 {
@@ -59,7 +60,7 @@ nav {
   border: 1px solid #3c3c3c;
   border-radius: 8px;
   outline: none;
-  box-shadow: 0 0 5px #00000032;
+  box-shadow: 0 0 20px #00000050;
   margin: 0.4rem 0;
   opacity: 0.25;
 }
@@ -78,18 +79,23 @@ nav {
   padding: 1.2rem; 
   color: #c8c8c8;
   border: 1px solid #3c3c3c;
-  left: 85%; 
-  top: 15vh;
+  left: 100%; 
+  top: 15%;
+  box-shadow: 5px 0 10px #00000050;
 }
-#settings-menu {
+.settingsMenu {
   position: absolute;
   background-color: #212121;
   border-radius: 12px;
   padding: 1.2rem; 
   color: #c8c8c8;
   border: 1px solid #3c3c3c;
-  left: 85%; 
-  top: 65vh;
+  left: 100%;
+  bottom: 5%;
+  box-shadow: 5px 0 10px #00000050;
+}
+.button .nav-icon {
+  transition: height 150ms ease, width 150ms ease;
 }
 .button:hover {
   background: #c8c8c8;
@@ -98,8 +104,10 @@ nav {
 .button:hover .nav-icon path {
   fill: #212121;
 }
-.button:active {
-  background: #212121;
-  color: #c8c8c8;
+.button:hover .nav-icon {
+  height: 1.2rem;
+  width: 1.2rem;
 }
-
+.button:active {
+  transform: scale(0.95);
+}
