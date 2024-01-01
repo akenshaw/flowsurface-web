@@ -1,67 +1,41 @@
 import { FlowFieldEffect, FlowFieldEffect2 } from "./flowFieldEffect.js";
+import { movingBoxes, deltaBoxes } from "./movingBoxes.js";
 
-document.getElementById('btn2').addEventListener('click', showMenu);
-document.getElementById('btn3').addEventListener('click', startBlankCanvas);
-document.getElementById('btn4').addEventListener('click', showSettings);
-document.getElementById('tbl-btn1').addEventListener('click', startCanvas1);
-document.getElementById('tbl-btn2').addEventListener('click', startCanvas2);
-document.getElementById('tbl-btn3').addEventListener('click', startCanvas3);
-document.getElementById('tbl-btn4').addEventListener('click', startCanvas4);
+const buttons = ['btn2', 'btn3', 'btn4', 'tbl-btn1', 'tbl-btn2', 'tbl-btn3', 'tbl-btn4'];
+const functions = [showMenu, startBlankCanvas, showSettings, startCanvas1, startCanvas2, startCanvas3, startCanvas4];
+
+for (let i = 0; i < buttons.length; i++) {
+  document.getElementById(buttons[i]).addEventListener('click', functions[i]);
+}
+
+const menus = ['settings-menu-0', 'settings-menu-1', 'settings-menu-2', 'settings-menu-3', 'settings-menu-4', 'menu']
+  .map(id => document.querySelector(`#${id}`));
+
+const tableBtns = ['tbl-btn1', 'tbl-btn2', 'tbl-btn3', 'tbl-btn4']
+  .map(id => document.querySelector(`#${id}`));
 
 let canvas; 
 let ctx;
-let flowField;
+let currentAnimation;
 let activeCanvasId = 0;
-
-const menu = document.querySelector("#menu")
-const settings = document.querySelector("#settings-menu")
-
-const tableBtn1 = document.querySelector("#tbl-btn1")
-const tableBtn2 = document.querySelector("#tbl-btn2")
-const tableBtn3 = document.querySelector("#tbl-btn3")
-const tableBtn4 = document.querySelector("#tbl-btn4")
-
 window.onload = function() {
-  canvas = document.querySelector("#canvas1")
-  ctx = canvas.getContext("2d");
-  
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  tableBtn1.disabled = true;
-  
-  flowField = new FlowFieldEffect(ctx, canvas.width, canvas.height);
-  activeCanvasId = 1;
-  flowField.animate(0);
+  startCanvas1();
 }
-
 window.addEventListener("resize", function() {
-  cancelAnimationFrame(flowField.flowFieldAnimation);
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  flowField = new FlowFieldEffect(ctx, canvas.width, canvas.height);
-  activeCanvasId = 1;
-  flowField.animate(0);
+  startCanvas1();
 });
 
 function enableAllButtons() {
-  tableBtn1.disabled = false;
-  tableBtn2.disabled = false;
-  tableBtn3.disabled = false;
-  tableBtn4.disabled = false;
+  tableBtns.forEach(btn => btn.disabled = false);
+  menus.forEach(menu => menu.style.display = "none");
 }
+
 function showMenu() {
-  if (menu.style.display === "none") {
-    menu.style.display = "block";
-  } else {
-    menu.style.display = "none";
-  }
+  menus[5].style.display = menus[5].style.display === "none" ? "block" : "none";
 }
 function showSettings() {
-  if (settings.style.display === "none") {
-    settings.style.display = "block";
-  } else {
-    settings.style.display = "none";
+  if (activeCanvasId >= 0 && activeCanvasId <= 4) {
+    menus[activeCanvasId].style.display = menus[activeCanvasId].style.display === "none" ? "block" : "none";
   }
 }
 
@@ -69,16 +43,21 @@ function terminateCanvas() {
 	showMenu();
   enableAllButtons();
 
-	cancelAnimationFrame(flowField.flowFieldAnimation);
-	
-	let oldCanvas = document.querySelector("#canvas1")
-	oldCanvas.parentNode.removeChild(oldCanvas);
+  if (currentAnimation != null) {
+    cancelAnimationFrame(currentAnimation.flowFieldAnimation);
+
+    let oldCanvas = document.querySelector("#canvas1")
+    if (oldCanvas != null) {
+      oldCanvas.parentNode.removeChild(oldCanvas);
+    }
+  };	
 }
 
 function startCanvas1() {
   terminateCanvas();
 
-  tableBtn1.disabled = true;
+  tableBtns[0].disabled = true;
+  activeCanvasId = 1;
 
   let newCanvas = document.createElement("canvas");
   newCanvas.id = "canvas1";
@@ -86,18 +65,17 @@ function startCanvas1() {
   document.body.appendChild(newCanvas);
   canvas = document.querySelector("#canvas1")
   ctx = canvas.getContext("2d");
-
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  flowField = new FlowFieldEffect(ctx, canvas.width, canvas.height);
-  activeCanvasId = 1;
-  flowField.animate(0);
+  currentAnimation = new FlowFieldEffect(ctx, canvas.width, canvas.height);
+  currentAnimation.animate(0);
 }
 function startCanvas2() {
   terminateCanvas();
 
-  tableBtn2.disabled = true;
+  tableBtns[1].disabled = true;
+  activeCanvasId = 2;
 
   let newCanvas = document.createElement("canvas");
   newCanvas.id = "canvas1";
@@ -105,18 +83,17 @@ function startCanvas2() {
   document.body.appendChild(newCanvas);
   canvas = document.querySelector("#canvas1")
   ctx = canvas.getContext("2d");
-
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  flowField = new FlowFieldEffect2(ctx, canvas.width, canvas.height);
-  activeCanvasId = 2;
-  flowField.animate(0);
+  currentAnimation = new FlowFieldEffect2(ctx, canvas.width, canvas.height);
+  currentAnimation.animate(0);
 }
 function startCanvas3() {
   terminateCanvas();
 
-  tableBtn3.disabled = true;
+  tableBtns[2].disabled = true;
+  activeCanvasId = 3;
   
 	let newCanvas = document.createElement("canvas");
   newCanvas.id = "canvas1";
@@ -124,48 +101,49 @@ function startCanvas3() {
   document.body.appendChild(newCanvas);
   canvas = document.querySelector("#canvas1")
   ctx = canvas.getContext("2d");
-
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  
-  activeCanvasId = 3;
+
+  currentAnimation = new movingBoxes(ctx, canvas.width, canvas.height);
+  currentAnimation.animate(0);  
 }
 function startCanvas4() {
 	terminateCanvas();
 
-  tableBtn4.disabled = true;
+  tableBtns[3].disabled = true;
+  activeCanvasId = 4;
+
   let newCanvas = document.createElement("canvas");
   newCanvas.id = "canvas1";
 
   document.body.appendChild(newCanvas);
   canvas = document.querySelector("#canvas1")
   ctx = canvas.getContext("2d");
-
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-	activeCanvasId = 4;
+  currentAnimation = new deltaBoxes(ctx, canvas.width, canvas.height);
+  currentAnimation.animate(0);  
 }
 
-const colorPicker = document.querySelector( '.js-color-picker');
-const lineWidthRange = document.querySelector( '.js-line-range' );
-const lineWidthLabel = document.querySelector( '.js-range-value' );
-const eraserButton = document.querySelector('.js-eraser-button');
+// drawing at blank canvas
+const colorPicker = document.querySelector("#settings-menu-0 > input.js-color-picker.color-picker")
+const lineWidthRange = document.querySelector("#settings-menu-0 > input.js-line-range")
+const lineWidthLabel = document.querySelector("#settings-menu-0 > label")
+const eraserButton = document.querySelector("#settings-menu-0 > input.js-eraser-button")
 
-const changeColor = event => {
-  console.log(event.target.value);
-  ctx.strokeStyle = event.target.value;
-};
+const changeColor = event => { ctx.strokeStyle = event.target.value; };
 const changeLineWidth = event => {
   const width = event.target.value;
   lineWidthLabel.innerHTML = width;
   ctx.lineWidth = width;
 };
-
 colorPicker.addEventListener('change', changeColor);
 lineWidthRange.addEventListener('input', changeLineWidth);
 
-function startBlankCanvas() {  
+function startBlankCanvas() { 
+  activeCanvasId = 0;
+
   let isErasing = false;
   colorPicker.value = '#C8C8C8'; 
   lineWidthRange.value = '1'; 
@@ -173,11 +151,11 @@ function startBlankCanvas() {
   eraserButton.checked = false;
 
 	enableAllButtons();
-	let oldCanvas = document.querySelector("#canvas1")
-	oldCanvas.parentNode.removeChild(oldCanvas);
+	terminateCanvas();
 
 	let newCanvas = document.createElement("canvas");
   newCanvas.id = "canvas1";
+  
   document.body.appendChild(newCanvas);
   canvas = document.querySelector("#canvas1")
 	canvas.width = window.innerWidth;
@@ -219,11 +197,11 @@ function startBlankCanvas() {
 
     if (isErasing) {
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = lineWidthRange.value*10;
+      ctx.lineWidth = lineWidthRange.value*4;
     } else {
       ctx.globalCompositeOperation = 'source-over';
   
-      ctx.lineWidth = lineWidthRange.value;
+      ctx.lineWidth = lineWidthRange.value*4;
       ctx.strokeStyle = colorPicker.value;
     }
   });
