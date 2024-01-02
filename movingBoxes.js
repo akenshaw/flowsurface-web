@@ -6,6 +6,7 @@ export class movingBoxes {
     #rectangles = [];
     #cellSize = 15;
     #interval = 10; 
+    #zoomLevel = 1;
     constructor(ctx, width, height) {
         this.#ctx = ctx;
         this.#ctx.strokeStyle = "#C8C8C8";
@@ -16,28 +17,46 @@ export class movingBoxes {
                 
         this.lastTime = 0;
         this.timer = 0;
+
+        this.#ctx.canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            let newZoomLevel = this.#zoomLevel * Math.pow(1.1, e.deltaY > 0 ? -1 : 1);
+            if (newZoomLevel >= 1 && newZoomLevel <= 4) {
+                this.#zoomLevel = newZoomLevel;
+            }
+        });
     }    
     #drawRectangle(rectangle) {
         this.#ctx.beginPath();
-        this.#ctx.rect(rectangle.x, this.#height - rectangle.y - rectangle.height, this.#cellSize * 2, rectangle.height);
+        this.#ctx.rect(rectangle.x, this.#height - rectangle.y - rectangle.height, this.#cellSize * this.#zoomLevel * 2, rectangle.height);
         this.#ctx.stroke();
-
+    
         rectangle.cells.forEach((cell, i) => {
             if (cell.left) {
                 this.#ctx.fillStyle = cell.left;
-                this.#ctx.fillRect(rectangle.x, this.#height - rectangle.y - (i+1) * this.#cellSize, this.#cellSize, this.#cellSize);
+                this.#ctx.fillRect(rectangle.x, this.#height - rectangle.y - (i+1) * this.#cellSize, this.#cellSize * this.#zoomLevel, this.#cellSize);
+                if (this.#zoomLevel >= 3) {
+                    this.#ctx.fillStyle = 'white';
+                    this.#ctx.textBaseline = 'middle';
+                    this.#ctx.fillText(cell.left.slice(-4, -1), rectangle.x, this.#height - rectangle.y - (i+1) * this.#cellSize + this.#cellSize / 2);
+                }
             }
             if (cell.right) {
                 this.#ctx.fillStyle = cell.right;
-                this.#ctx.fillRect(rectangle.x + this.#cellSize, this.#height - rectangle.y - (i+1) * this.#cellSize, this.#cellSize, this.#cellSize);
+                this.#ctx.fillRect(rectangle.x + this.#cellSize * this.#zoomLevel, this.#height - rectangle.y - (i+1) * this.#cellSize, this.#cellSize * this.#zoomLevel, this.#cellSize);
+                if (this.#zoomLevel >= 3) {
+                    this.#ctx.fillStyle = 'white';
+                    this.#ctx.textBaseline = 'middle';
+                    this.#ctx.fillText(cell.right.slice(-4, -1), rectangle.x + this.#cellSize * this.#zoomLevel, this.#height - rectangle.y - (i+1) * this.#cellSize + this.#cellSize / 2);
+                }
             }
         });
-    }   
+    }    
     animate(timeStamp) {
         const deltaTime = timeStamp - this.lastTime;
         this.lastTime = timeStamp;
         if (this.timer > this.#interval * 1000) {
-
+    
             const height = Math.random() * this.#height;
             const startY = Math.random() * (this.#height - height);
             const numCells = Math.floor(height / this.#cellSize);
@@ -61,7 +80,7 @@ export class movingBoxes {
             }
         }
         this.movingBoxes = requestAnimationFrame(this.animate.bind(this));
-    }       
+    }         
 }
 
 export class deltaBoxes {
