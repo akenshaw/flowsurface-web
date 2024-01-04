@@ -57,9 +57,9 @@ class Canvas1 {
             this.#lastOpenPrice = openPrice;
         }
         this.#currentDataPoint = { startTime, endTime, openPrice, highPrice, lowPrice, closePrice };
-        this.drawLine();
+        this.drawStart();
     }    
-    drawLine() {
+    drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
         if (this.#dataPoints.length > 0) {
@@ -73,7 +73,6 @@ class Canvas1 {
         this.drawDataPoint(this.#currentDataPoint, this.#width - this.#rectangleWidth);
     }                      
     drawDataPoint(data, x) {
-        //console.log("drawing at " + x, data)
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
         
         const yOpen = this.#height - (data.openPrice - this.#yMin) * scaleFactor;
@@ -84,7 +83,12 @@ class Canvas1 {
         this.drawLineAt(x, yHigh, '#c8c8c8');
         this.drawLineAt(x, yLow, '#c8c8c8');
         this.drawLineAt(x, yOpen, 'yellow');     
-        this.drawLineAt(x, yClose, '#C0504E');
+        this.drawLineAt(x, yClose, yClose < yOpen ? '#51CDA0' : '#C0504E');
+        
+        this.#ctx.beginPath();
+        this.#ctx.moveTo(x + this.#minuteWidth / 2, yOpen);
+        this.#ctx.lineTo(x + this.#minuteWidth / 2, yClose);
+        this.#ctx.stroke();
     }
     drawLineAt(x, y, color) {
         this.#ctx.beginPath();
@@ -122,8 +126,13 @@ class Canvas2 {
         const scaleFactor = this.#height / (yMax - yMin);
         
         const yClose = this.#height - (this.#data.closePrice - yMin) * scaleFactor;
+        const yOpen = this.#height - (this.#data.openPrice - yMin) * scaleFactor;
         
-        this.drawTextAt(yClose, this.#data.closePrice, '#C0504E');
+        if (yClose > yOpen) {
+            this.drawTextAt(yClose, this.#data.closePrice, '#C0504E');
+        } else if (yClose < yOpen) {
+            this.drawTextAt(yClose, this.#data.closePrice, '#51CDA0');
+        }
         this.drawTextAt(this.#height - 20, Math.round(yMin), '#c8c8c8');
         this.drawTextAt(20, Math.round(yMax), '#c8c8c8');
     }     
