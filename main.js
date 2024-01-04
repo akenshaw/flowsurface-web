@@ -1,5 +1,6 @@
 import { FlowFieldEffect, FlowFieldEffect2 } from "./flowFieldEffect.js";
 import { movingBoxes, deltaBoxes } from "./movingBoxes.js";
+import { CanvasController } from "./CanvasAggr.js";
 
 const buttons = ['btn2', 'btn3', 'btn4', 'tbl-btn1', 'tbl-btn2', 'tbl-btn3', 'tbl-btn4'];
 const functions = [showMenu, startBlankCanvas, showSettings, startCanvas1, startCanvas2, startCanvas3, startCanvas4];
@@ -40,17 +41,17 @@ function showSettings() {
 }
 
 function terminateCanvas() {
-	showMenu();
+  showMenu();
   enableAllButtons();
 
   if (currentAnimation != null) {
     cancelAnimationFrame(currentAnimation.flowFieldAnimation);
 
-    let oldCanvas = document.querySelector("#canvas1")
-    if (oldCanvas != null) {
-      oldCanvas.parentNode.removeChild(oldCanvas);
+    let canvases = document.getElementsByTagName("canvas");
+    while(canvases.length > 0){
+      canvases[0].parentNode.removeChild(canvases[0]);
     }
-  };	
+  };  
 }
 
 function startCanvas1() {
@@ -95,17 +96,46 @@ function startCanvas3() {
   tableBtns[2].disabled = true;
   activeCanvasId = 3;
   
-	let newCanvas = document.createElement("canvas");
+  // create main canvas
+  let newCanvas = document.createElement("canvas");
   newCanvas.id = "canvas1";
+  newCanvas.style.position = "absolute";
+  newCanvas.style.left = "0px";
+  newCanvas.style.top = "0px";
 
   document.body.appendChild(newCanvas);
   canvas = document.querySelector("#canvas1")
   ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth * 0.9; 
+  canvas.height = window.innerHeight * 0.95;
 
-  currentAnimation = new movingBoxes(ctx, canvas.width, canvas.height);
-  currentAnimation.animate(0);  
+  // create right canvas
+  let newCanvasRight = document.createElement("canvas");
+  newCanvasRight.id = "canvas2";
+  newCanvasRight.style.position = "absolute";
+  newCanvasRight.style.left = canvas.width + "px"; 
+
+  document.body.appendChild(newCanvasRight);
+  let canvasRight = document.querySelector("#canvas2")
+  let ctxRight = canvasRight.getContext("2d");
+  canvasRight.width = window.innerWidth * 0.1;
+  canvasRight.height = window.innerHeight * 0.95;
+
+  // create bottom canvas
+  let newCanvasBottom = document.createElement("canvas");
+  newCanvasBottom.id = "canvas3";
+  newCanvasBottom.style.position = "absolute";
+  newCanvasBottom.style.left = "0px";
+  newCanvasBottom.style.top = canvas.height + "px";
+
+  document.body.appendChild(newCanvasBottom);
+  let canvasBottom = document.querySelector("#canvas3")
+  let ctxBottom = canvasBottom.getContext("2d");
+  canvasBottom.width = canvas.width; 
+  canvasBottom.height = window.innerHeight * 0.05; 
+
+  // create controller
+  new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom.width, canvasBottom.height);
 }
 function startCanvas4() {
 	terminateCanvas();
