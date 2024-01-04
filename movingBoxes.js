@@ -1,5 +1,4 @@
 export class movingBoxes {
-    flowFieldAnimation;
     #ctx;
     #width;
     #height;
