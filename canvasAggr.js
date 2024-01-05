@@ -4,18 +4,30 @@ export class CanvasController {
     #canvas2;
     #canvas3;
     #socket;
+    #aggTradesBuffer = [];
     constructor(ctx, width, height, ctx2, width2, height2, ctx3, width3, height3) {
         this.#canvas1 = new Canvas1(this, ctx, width, height);
         this.#canvas2 = new Canvas2(this, ctx2, width2, height2);
         //this.#canvas3 = new Canvas3(this, ctx3, width3, height3);
 
-        this.#socket = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@kline_1m');
+        this.#socket = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@kline_1m/btcusdt@aggTrade');
         this.#socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
+            const message = JSON.parse(event.data);
 
-            this.#canvas1.updateData(data.data);
-            this.#canvas2.updateData(data.data);
-            //this.#canvas3.updateTimeline(data.data);
+            if (message.stream.endsWith('@aggTrade')) {
+                this.#aggTradesBuffer.push({
+                    x: message.data.T,
+                    y: parseFloat(message.data.p),
+                    q: parseFloat(message.data.q),
+                    m: message.data.m,
+                });
+
+            } else if (message.stream.endsWith('@kline_1m')) {
+                this.#canvas1.updateData(message.data, this.#aggTradesBuffer);
+                this.#canvas2.updateData(message.data);
+                //this.#canvas3.updateTimeline(message.data);
+                this.#aggTradesBuffer = [];
+            };
         };
     }
 }
@@ -26,7 +38,9 @@ class Canvas1 {
     #width;
     #height;
     #dataPoints = [];
+    #klinesTrades = [];
     #currentDataPoint;
+    #currentKlineTrades = [];
     #lastOpenPrice;
     #yMin;
     #yMax;
@@ -40,8 +54,8 @@ class Canvas1 {
         this.#minuteWidth = (1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth);
     }
 
-    updateData(data) {
-        const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = data;
+    updateData(kline, aggTrades) {
+        const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
 
         this.#yMin = this.#lastOpenPrice * 0.997;
         this.#yMax = this.#lastOpenPrice * 1.003;
@@ -51,12 +65,15 @@ class Canvas1 {
         if (this.#lastOpenPrice !== openPrice) {
             if (this.#currentDataPoint) {
                 this.#dataPoints.push(this.#currentDataPoint); 
+                this.#klinesTrades.push(this.#currentKlineTrades);
 
                 if (this.#dataPoints.length > 60) { this.#dataPoints.shift(); }
+                this.#currentKlineTrades = [];
             }
             this.#lastOpenPrice = openPrice;
         }
         this.#currentDataPoint = { startTime, endTime, openPrice, highPrice, lowPrice, closePrice };
+        this.#currentKlineTrades.push(aggTrades);
         this.drawStart();
     }    
     drawStart() {
@@ -66,37 +83,70 @@ class Canvas1 {
             const leftmostTime = this.#currentDataPoint.startTime - 30 * 60 * 1000; // Current time minus 30 minutes
     
             this.#dataPoints.forEach((data, index) => {
+                const trades = this.#klinesTrades[index];
                 const x = (data.startTime - leftmostTime) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth);
-                this.drawDataPoint(data, x);
+                this.drawDataPoint(trades, data, x);
             });
         }
-        this.drawDataPoint(this.#currentDataPoint, this.#width - this.#rectangleWidth);
-    }                      
-    drawDataPoint(data, x) {
+        this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, this.#width - this.#rectangleWidth);
+    }                        
+    drawDataPoint(trades, kline, x) {
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
         
-        const yOpen = this.#height - (data.openPrice - this.#yMin) * scaleFactor;
-        const yHigh = this.#height - (data.highPrice - this.#yMin) * scaleFactor;
-        const yLow = this.#height - (data.lowPrice - this.#yMin) * scaleFactor;
-        const yClose = this.#height - (data.closePrice - this.#yMin) * scaleFactor;
+        // draw trades
+        trades.forEach((trade) => {
+            trade.forEach((aggTrade) => {
+                const yTradePrice = this.#height - (aggTrade.y - this.#yMin) * scaleFactor;
+                if (aggTrade.q < 0.01) {
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.05);
+                } else if (aggTrade.q < 0.1) {
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.10);
+                } else if (aggTrade.q < 1) {
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.25);
+                } else if (aggTrade.q < 10) {
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.5);
+                } else if (aggTrade.q < 100) {
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.9);
+                }
+            });
+        });    
+
+        // draw kline
+        const yOpen = this.#height - (kline.openPrice - this.#yMin) * scaleFactor;
+        const yHigh = this.#height - (kline.highPrice - this.#yMin) * scaleFactor;
+        const yLow = this.#height - (kline.lowPrice - this.#yMin) * scaleFactor;
+        const yClose = this.#height - (kline.closePrice - this.#yMin) * scaleFactor;
         
-        this.drawLineAt(x, yHigh, '#c8c8c8');
-        this.drawLineAt(x, yLow, '#c8c8c8');
-        this.drawLineAt(x, yOpen, 'yellow');     
-        this.drawLineAt(x, yClose, yClose < yOpen ? '#51CDA0' : '#C0504E');
-        
+        this.drawKlineAt(x, yHigh, '#c8c8c8');
+        this.drawKlineAt(x, yLow, '#c8c8c8');
+        this.drawKlineAt(x, yOpen, 'yellow');     
+        this.drawKlineAt(x, yClose, yClose < yOpen ? '#9BE6D1' : '#E6A1A0');
+
         this.#ctx.beginPath();
-        this.#ctx.moveTo(x + this.#minuteWidth / 2, yOpen);
-        this.#ctx.lineTo(x + this.#minuteWidth / 2, yClose);
+        this.#ctx.moveTo(x + this.#minuteWidth/2, yOpen);
+        this.#ctx.lineTo(x + this.#minuteWidth/2, yClose);
         this.#ctx.stroke();
     }
-    drawLineAt(x, y, color) {
+    drawKlineAt(x, y, color) {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x, y);
         this.#ctx.lineTo(x + this.#minuteWidth, y);
         this.#ctx.strokeStyle = color;
         this.#ctx.stroke();
     }    
+    drawTradesAt(x, y, side, opacity) {
+        this.#ctx.beginPath();
+        if (!side) {
+            this.#ctx.moveTo(x + 2 + this.#minuteWidth/2, y);
+            this.#ctx.lineTo(x + 2 + this.#minuteWidth/2 + 15, y);
+            this.#ctx.strokeStyle = `rgba(81, 205, 160, ${opacity})`;
+        } else {
+            this.#ctx.moveTo(x - 2 + this.#minuteWidth/2, y);
+            this.#ctx.lineTo(x - 2 + this.#minuteWidth/2 - 15, y);
+            this.#ctx.strokeStyle = `rgba(192, 80, 77, ${opacity})`; 
+        }
+        this.#ctx.stroke();
+    }
 }
 
 class Canvas2 {
