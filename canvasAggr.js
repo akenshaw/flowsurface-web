@@ -100,8 +100,8 @@ class Canvas1 {
         const yLow = Math.round(this.#height - (kline.lowPrice - this.#yMin) * scaleFactor);
         const yClose = Math.round(this.#height - (kline.closePrice - this.#yMin) * scaleFactor);
 
-        this.drawKlineAt(x, yHigh, '#c8c8c8');
-        this.drawKlineAt(x, yLow, '#c8c8c8');
+        this.drawKlineAt(x, yHigh - 2, '#c8c8c8');
+        this.drawKlineAt(x, yLow + 2, '#c8c8c8');
 
         // draw trades
         trades.forEach((trade) => {
@@ -122,12 +122,13 @@ class Canvas1 {
         });    
 
         // draw kline
-        this.drawKlineAt(x, yOpen, 'yellow');     
-        this.drawKlineAt(x, yClose, yClose < yOpen ? '#9BE6D1' : '#E6A1A0');
+        //this.drawKlineAt(x, yOpen, 'yellow');     
+        //this.drawKlineAt(x, yClose, yClose < yOpen ? '#9BE6D1' : '#E6A1A0');
 
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + this.#minuteWidth/2, yOpen);
         this.#ctx.lineTo(x + this.#minuteWidth/2, yClose);
+        this.#ctx.strokeStyle = yClose < yOpen ? '#9BE6D1' : '#E6A1A0';
         this.#ctx.stroke();
     }
     drawKlineAt(x, y, color) {
@@ -256,7 +257,7 @@ class Canvas3 {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x, 0);
         this.#ctx.lineTo(x, this.#height - 20);
-        this.#ctx.strokeStyle = "#c8c8c8";
+        this.#ctx.strokeStyle = "rgba(200, 200, 200, 0.4)";
         this.#ctx.lineWidth = 1;
         this.#ctx.stroke();
 
