@@ -107,7 +107,7 @@ function startCanvas3() {
   canvas = document.querySelector("#canvas1")
   ctx = canvas.getContext("2d");
   canvas.width = window.innerWidth * 0.9; 
-  canvas.height = window.innerHeight * 0.95;
+  canvas.height = window.innerHeight * 0.9;
 
   // create right canvas
   let newCanvasRight = document.createElement("canvas");
@@ -119,7 +119,7 @@ function startCanvas3() {
   let canvasRight = document.querySelector("#canvas2")
   let ctxRight = canvasRight.getContext("2d");
   canvasRight.width = window.innerWidth * 0.1;
-  canvasRight.height = window.innerHeight * 0.95;
+  canvasRight.height = window.innerHeight * 0.9;
 
   // create bottom canvas
   let newCanvasBottom = document.createElement("canvas");
@@ -132,7 +132,7 @@ function startCanvas3() {
   let canvasBottom = document.querySelector("#canvas3")
   let ctxBottom = canvasBottom.getContext("2d");
   canvasBottom.width = canvas.width; 
-  canvasBottom.height = window.innerHeight * 0.05; 
+  canvasBottom.height = window.innerHeight * 0.1; 
 
   // create controller
   new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom.width, canvasBottom.height);
