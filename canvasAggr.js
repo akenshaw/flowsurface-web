@@ -8,7 +8,7 @@ export class CanvasController {
     constructor(ctx, width, height, ctx2, width2, height2, ctx3, width3, height3) {
         this.#canvas1 = new Canvas1(this, ctx, width, height);
         this.#canvas2 = new Canvas2(this, ctx2, width2, height2);
-        //this.#canvas3 = new Canvas3(this, ctx3, width3, height3);
+        this.#canvas3 = new Canvas3(this, ctx3, width3, height3);
 
         this.#socket = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@kline_1m/btcusdt@aggTrade');
         this.#socket.onmessage = (event) => {
@@ -25,7 +25,8 @@ export class CanvasController {
             } else if (message.stream.endsWith('@kline_1m')) {
                 this.#canvas1.updateData(message.data, this.#aggTradesBuffer);
                 this.#canvas2.updateData(message.data);
-                //this.#canvas3.updateTimeline(message.data);
+                this.#canvas3.updateData(message.data);
+
                 this.#aggTradesBuffer = [];
             };
         };
@@ -51,23 +52,24 @@ class Canvas1 {
         this.#ctx = ctx;
         this.#width = width;
         this.#height = height;
-        this.#minuteWidth = (1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth);
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
 
     updateData(kline, aggTrades) {
         const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
 
-        this.#yMin = this.#lastOpenPrice * 0.997;
-        this.#yMax = this.#lastOpenPrice * 1.003;
-        if (lowPrice < this.#yMin) { this.#yMin = lowPrice; };
-        if (highPrice > this.#yMax) { this.#yMax = highPrice; };
+        this.#yMin = Math.min(openPrice * 0.997, lowPrice);
+        this.#yMax = Math.max(openPrice * 1.003, highPrice);;
         
         if (this.#lastOpenPrice !== openPrice) {
             if (this.#currentDataPoint) {
                 this.#dataPoints.push(this.#currentDataPoint); 
                 this.#klinesTrades.push(this.#currentKlineTrades);
 
-                if (this.#dataPoints.length > 60) { this.#dataPoints.shift(); }
+                if (this.#dataPoints.length > 60) { 
+                    this.#dataPoints.shift();
+                    this.#klinesTrades.shift();
+                }
                 this.#currentKlineTrades = [];
             }
             this.#lastOpenPrice = openPrice;
@@ -84,27 +86,35 @@ class Canvas1 {
     
             this.#dataPoints.forEach((data, index) => {
                 const trades = this.#klinesTrades[index];
-                const x = (data.startTime - leftmostTime) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth);
+                const x = Math.round((data.startTime - leftmostTime) / (30 * 60 * 1000) * (this.#width - this.#minuteWidth));
                 this.drawDataPoint(trades, data, x);
             });
         }
-        this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, this.#width - this.#rectangleWidth);
+        this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth));
     }                        
     drawDataPoint(trades, kline, x) {
-        const scaleFactor = this.#height / (this.#yMax - this.#yMin);
-        
+        const scaleFactor = Math.round(this.#height / (this.#yMax - this.#yMin));
+
+        const yOpen = Math.round(this.#height - (kline.openPrice - this.#yMin) * scaleFactor);
+        const yHigh = Math.round(this.#height - (kline.highPrice - this.#yMin) * scaleFactor);
+        const yLow = Math.round(this.#height - (kline.lowPrice - this.#yMin) * scaleFactor);
+        const yClose = Math.round(this.#height - (kline.closePrice - this.#yMin) * scaleFactor);
+
+        this.drawKlineAt(x, yHigh, '#c8c8c8');
+        this.drawKlineAt(x, yLow, '#c8c8c8');
+
         // draw trades
         trades.forEach((trade) => {
             trade.forEach((aggTrade) => {
-                const yTradePrice = this.#height - (aggTrade.y - this.#yMin) * scaleFactor;
+                const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
                 if (aggTrade.q < 0.01) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.05);
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.04);
                 } else if (aggTrade.q < 0.1) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.10);
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.08);
                 } else if (aggTrade.q < 1) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.25);
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.18);
                 } else if (aggTrade.q < 10) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.5);
+                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.4);
                 } else if (aggTrade.q < 100) {
                     this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.9);
                 }
@@ -112,13 +122,6 @@ class Canvas1 {
         });    
 
         // draw kline
-        const yOpen = this.#height - (kline.openPrice - this.#yMin) * scaleFactor;
-        const yHigh = this.#height - (kline.highPrice - this.#yMin) * scaleFactor;
-        const yLow = this.#height - (kline.lowPrice - this.#yMin) * scaleFactor;
-        const yClose = this.#height - (kline.closePrice - this.#yMin) * scaleFactor;
-        
-        this.drawKlineAt(x, yHigh, '#c8c8c8');
-        this.drawKlineAt(x, yLow, '#c8c8c8');
         this.drawKlineAt(x, yOpen, 'yellow');     
         this.drawKlineAt(x, yClose, yClose < yOpen ? '#9BE6D1' : '#E6A1A0');
 
@@ -148,13 +151,14 @@ class Canvas1 {
         this.#ctx.stroke();
     }
 }
-
 class Canvas2 {
     #controller;
     #ctx;
     #width;
     #height;
-    #data = [];
+    #data;
+    #yMin;
+    #yMax;
     constructor(controller, ctx, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -164,27 +168,26 @@ class Canvas2 {
     updateData(data) {
         const { k: { o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = data;
         this.#data = { openPrice, highPrice, lowPrice, closePrice };
+    
+        this.#yMin = Math.min(openPrice * 0.997, lowPrice);
+        this.#yMax = Math.max(openPrice * 1.003, highPrice);
+    
         this.drawLine();
     }
     drawLine() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
-
-        let yMin = this.#data.openPrice * 0.997;
-        let yMax = this.#data.openPrice * 1.003;
-        if (this.#data.lowPrice < yMin) { yMin = this.#data.lowPrice; };
-        if (this.#data.highPrice > yMax) { yMax = this.#data.highPrice; };
-        const scaleFactor = this.#height / (yMax - yMin);
+    
+        const scaleFactor = Math.round(this.#height / (this.#yMax - this.#yMin));
+        const { closePrice, openPrice } = this.#data;
         
-        const yClose = this.#height - (this.#data.closePrice - yMin) * scaleFactor;
-        const yOpen = this.#height - (this.#data.openPrice - yMin) * scaleFactor;
+        const yClose = Math.round(this.#height - (closePrice - this.#yMin) * scaleFactor);
+        const yOpen = Math.round(this.#height - (openPrice - this.#yMin) * scaleFactor);
         
-        if (yClose > yOpen) {
-            this.drawTextAt(yClose, this.#data.closePrice, '#C0504E');
-        } else if (yClose < yOpen) {
-            this.drawTextAt(yClose, this.#data.closePrice, '#51CDA0');
-        }
-        this.drawTextAt(this.#height - 20, Math.round(yMin), '#c8c8c8');
-        this.drawTextAt(20, Math.round(yMax), '#c8c8c8');
+        const color = yClose > yOpen ? '#C0504E' : yClose < yOpen ? '#51CDA0' : '#c8c8c8';
+        this.drawTextAt(yClose, closePrice, color);
+    
+        this.drawTextAt(this.#height - 10, Math.round(this.#yMin), '#c8c8c8');
+        this.drawTextAt(15, Math.round(this.#yMax), '#c8c8c8');
     }     
     drawTextAt(y, text, color) {
         this.#ctx.font = '14px monospace';
@@ -192,49 +195,92 @@ class Canvas2 {
         this.#ctx.fillText(text, 10, y);
     }
 }
-
 class Canvas3 {
     #controller;
     #ctx;
     #width;
     #height;
-    #lastUpdateTime;
-    #cellWidth;
+    #dataPoints = [];
+    #currentDataPoint;
+    #lastStartTime;
+    #yMin = 0;
+    #yMax;
+    #rectangleWidth = 60;
+    #minuteWidth;
     constructor(controller, ctx, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
         this.#width = width;
         this.#height = height;
-        this.#cellWidth = this.#width / 60;
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
 
-    updateTimeline(data) {
-        const { E: EventTime, k: { t: startTime, T: endTime } } = data;
-
-        const cellTime = (endTime - startTime) / 2; // Time represented by each cell
-        for (let i = 0; i < 120; i++) {
-            const x = i * this.#cellWidth;
-            this.drawLine(x, 0, x, this.#height/2); 
-            // Draw time label every 2 cells (1 minute)
-            if (i % 2 === 0) {
-                const time = new Date(startTime + i * cellTime);
-                this.drawTimeLabel(x, this.#height/2 + 20, time);
+    updateData(kline) {
+        const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
+    
+        const sellVolume = totalVolume - buyVolume;
+        this.#yMax = Math.round(this.#dataPoints.reduce((max, data) => Math.max(max, data.buyVolume, data.sellVolume), Math.max(buyVolume, sellVolume)));
+    
+        if (this.#lastStartTime !== startTime) {
+            if (this.#currentDataPoint) {
+                this.#dataPoints.push(this.#currentDataPoint); 
+    
+                if (this.#dataPoints.length > 60) { 
+                    this.#dataPoints.shift();
+                }
             }
+            this.#lastStartTime = startTime;
         }
-    }
-
-    drawLine(x1, y1, x2, y2) {
+        this.#currentDataPoint = { startTime, endTime, buyVolume, sellVolume };
+        this.drawStart();
+    }    
+    drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
+    
+        if (this.#dataPoints.length > 0) {
+            const leftmostTime = this.#currentDataPoint.startTime - 30 * 60 * 1000; // Current time minus 30 minutes
+    
+            this.#dataPoints.forEach((data, index) => {
+                const x = Math.round((data.startTime - leftmostTime) / (30 * 60 * 1000) * (this.#width - this.#minuteWidth));
+                this.drawDataPoint(data, x);
+            });
+        }
+        this.drawDataPoint(this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth));
+    }        
+    drawDataPoint(kline, x) {
+        const scaleFactor = Math.round((this.#height - 20)/(this.#yMax));
+    
+        const yBuyVolume = Math.round((this.#height - 20) - (kline.buyVolume * scaleFactor));
+        const ySellVolume = Math.round((this.#height - 20) - (kline.sellVolume * scaleFactor));
 
         this.#ctx.beginPath();
-        this.#ctx.moveTo(x1, y1);
-        this.#ctx.lineTo(x2, y2);
-        this.#ctx.strokeStyle = '#c8c8c8';
+        this.#ctx.moveTo(x, 0);
+        this.#ctx.lineTo(x, this.#height - 20);
+        this.#ctx.strokeStyle = "#c8c8c8";
+        this.#ctx.lineWidth = 1;
         this.#ctx.stroke();
-    }
 
-    drawTimeLabel(x, y, time) {
+        this.drawTimeLabel(x, kline.startTime);
+    
+        this.drawKlineAt(x + this.#minuteWidth/2 + 5, yBuyVolume, '#51CDA0');
+        this.drawKlineAt(x + this.#minuteWidth/2 - 5, ySellVolume, '#C0504E');
+    }
+    drawKlineAt(x, y, color) {
+        this.#ctx.beginPath();
+        this.#ctx.moveTo(x, this.#height - 20);
+        this.#ctx.lineTo(x, y);
+        this.#ctx.strokeStyle = color;
+        this.#ctx.lineWidth = 5;
+        this.#ctx.stroke();
+    }     
+    drawTimeLabel(x, startTime) {
+        const date = new Date(startTime);
+    
+        // Format the time as "HH:MM"
+        const time = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+    
+        this.#ctx.font = '12px monospace';
         this.#ctx.fillStyle = '#c8c8c8';
-        this.#ctx.fillText(time.toISOString().substr(11, 5), x, y); // Format time as HH:mm
+        this.#ctx.fillText(time, x, this.#height - 5);
     }
 }
