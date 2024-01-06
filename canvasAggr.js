@@ -93,7 +93,7 @@ class Canvas1 {
         this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth));
     }                        
     drawDataPoint(trades, kline, x) {
-        const scaleFactor = Math.round(this.#height / (this.#yMax - this.#yMin));
+        const scaleFactor = this.#height / (this.#yMax - this.#yMin);
 
         const yOpen = Math.round(this.#height - (kline.openPrice - this.#yMin) * scaleFactor);
         const yHigh = Math.round(this.#height - (kline.highPrice - this.#yMin) * scaleFactor);
@@ -177,7 +177,7 @@ class Canvas2 {
     drawLine() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
-        const scaleFactor = Math.round(this.#height / (this.#yMax - this.#yMin));
+        const scaleFactor = this.#height / (this.#yMax - this.#yMin);
         const { closePrice, openPrice } = this.#data;
         
         const yClose = Math.round(this.#height - (closePrice - this.#yMin) * scaleFactor);
@@ -248,10 +248,10 @@ class Canvas3 {
         this.drawDataPoint(this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth));
     }        
     drawDataPoint(kline, x) {
-        const scaleFactor = Math.round((this.#height - 20)/(this.#yMax));
+        const scaleFactor = (this.#height - 20) / this.#yMax;
     
-        const yBuyVolume = Math.round((this.#height - 20) - (kline.buyVolume * scaleFactor));
-        const ySellVolume = Math.round((this.#height - 20) - (kline.sellVolume * scaleFactor));
+        const yBuyVolume = Math.max(0, Math.min(this.#height - 20, Math.round((this.#height - 20) - (kline.buyVolume * scaleFactor))));
+        const ySellVolume = Math.max(0, Math.min(this.#height - 20, Math.round((this.#height - 20) - (kline.sellVolume * scaleFactor))));
 
         this.#ctx.beginPath();
         this.#ctx.moveTo(x, 0);
@@ -275,7 +275,6 @@ class Canvas3 {
     }     
     drawTimeLabel(x, startTime) {
         const date = new Date(startTime);
-    
         // Format the time as "HH:MM"
         const time = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
     
