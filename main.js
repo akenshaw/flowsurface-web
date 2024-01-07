@@ -135,7 +135,7 @@ function startCanvas3() {
   canvasBottom.height = window.innerHeight * 0.1; 
 
   // create controller
-  new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom.width, canvasBottom.height);
+  new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom.width, canvasBottom.height);
 }
 function startCanvas4() {
 	terminateCanvas();

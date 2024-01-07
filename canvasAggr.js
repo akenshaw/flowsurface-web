@@ -1,13 +1,13 @@
 export class CanvasController {
-    #zoomLevel = 1;
+    zoomLevel = 0.2222; 
     #canvas1;
     #canvas2;
     #canvas3;
     #socket;
     #aggTradesBuffer = [];
-    constructor(ctx, width, height, ctx2, width2, height2, ctx3, width3, height3) {
+    constructor(ctx, width, height, ctx2, canvasRight, width2, height2, ctx3, width3, height3) {
         this.#canvas1 = new Canvas1(this, ctx, width, height);
-        this.#canvas2 = new Canvas2(this, ctx2, width2, height2);
+        this.#canvas2 = new Canvas2(this, ctx2, canvasRight, width2, height2);
         this.#canvas3 = new Canvas3(this, ctx3, width3, height3);
 
         this.#socket = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@kline_1m/btcusdt@aggTrade');
@@ -30,6 +30,16 @@ export class CanvasController {
                 this.#aggTradesBuffer = [];
             };
         };
+
+        this.#canvas2.canvas.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
+            let newZoomLevel = this.zoomLevel - (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
+            this.zoomLevel = Math.max(0, Math.min(newZoomLevel, 1));
+        
+            this.#canvas1.zoom(this.zoomLevel);
+            this.#canvas2.zoom(this.zoomLevel);
+        });
     }
 }
 
@@ -47,6 +57,8 @@ class Canvas1 {
     #yMax;
     #rectangleWidth = 60;
     #minuteWidth;
+    #minMultiplier = 0.997;
+    #maxMultiplier = 1.003;
     constructor(controller, ctx, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -55,11 +67,23 @@ class Canvas1 {
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
 
+    zoom(zoomLevel) {
+        const minStart = 0.001;
+        const minEnd = 0.01;  
+        const maxStart = 0.001;
+        const maxEnd = 0.01;  
+    
+        const minDistance = minStart + (minEnd - minStart) * zoomLevel;
+        const maxDistance = maxStart + (maxEnd - maxStart) * zoomLevel;
+    
+        this.#minMultiplier = Math.round((1 - minDistance) * 10000) / 10000; 
+        this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
+    }       
     updateData(kline, aggTrades) {
         const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
 
-        this.#yMin = Math.min(openPrice * 0.997, lowPrice);
-        this.#yMax = Math.max(openPrice * 1.003, highPrice);;
+        this.#yMin = Math.min(openPrice * this.#minMultiplier, lowPrice);
+        this.#yMax = Math.max(openPrice * this.#maxMultiplier, highPrice);
         
         if (this.#lastOpenPrice !== openPrice) {
             if (this.#currentDataPoint) {
@@ -160,18 +184,34 @@ class Canvas2 {
     #data;
     #yMin;
     #yMax;
-    constructor(controller, ctx, width, height) {
+    #minMultiplier = 0.997;
+    #maxMultiplier = 1.003;
+    constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
+        this.canvas = canvas;
         this.#width = width;
         this.#height = height;
     }
+
+    zoom(zoomLevel) {
+        const minStart = 0.001;
+        const minEnd = 0.01; ;
+        const maxStart = 0.001; 
+        const maxEnd = 0.01;    
+    
+        const minDistance = minStart + (minEnd - minStart) * zoomLevel;
+        const maxDistance = maxStart + (maxEnd - maxStart) * zoomLevel;
+    
+        this.#minMultiplier = Math.round((1 - minDistance) * 10000) / 10000; 
+        this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
+    }        
     updateData(data) {
         const { k: { o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = data;
         this.#data = { openPrice, highPrice, lowPrice, closePrice };
     
-        this.#yMin = Math.min(openPrice * 0.997, lowPrice);
-        this.#yMax = Math.max(openPrice * 1.003, highPrice);
+        this.#yMin = Math.min(openPrice * this.#minMultiplier, lowPrice);
+        this.#yMax = Math.max(openPrice * this.#maxMultiplier, highPrice);
     
         this.drawLine();
     }
@@ -204,7 +244,6 @@ class Canvas3 {
     #dataPoints = [];
     #currentDataPoint;
     #lastStartTime;
-    #yMin = 0;
     #yMax;
     #rectangleWidth = 60;
     #minuteWidth;
@@ -279,7 +318,7 @@ class Canvas3 {
         // Format the time as "HH:MM"
         const time = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
     
-        this.#ctx.font = '12px monospace';
+        this.#ctx.font = '10px monospace';
         this.#ctx.fillStyle = '#c8c8c8';
         this.#ctx.fillText(time, x, this.#height - 5);
     }
