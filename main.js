@@ -23,7 +23,12 @@ window.onload = function() {
   startCanvas1();
 }
 window.addEventListener("resize", function() {
-  startCanvas1();
+  if (activeCanvasId == 1) { 
+    startCanvas1();
+  };
+  if (activeCanvasId == 2) { 
+    startCanvas2();
+  };
 });
 
 function enableAllButtons() {
