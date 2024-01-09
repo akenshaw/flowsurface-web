@@ -1,15 +1,16 @@
 export class CanvasController {
-    zoomLevel = 0.2222; 
+    zoomYLevel = 0.2222; 
+    zoomXLevel = 0;
     #canvas1;
     #canvas2;
     #canvas3;
     #socket;
     #aggTradesBuffer = [];
     #depth20Buffer = [];
-    constructor(ctx, width, height, ctx2, canvasRight, width2, height2, ctx3, width3, height3) {
+    constructor(ctx, width, height, ctx2, canvasRight, width2, height2, ctx3, canvasBottom, width3, height3) {
         this.#canvas1 = new Canvas1(this, ctx, width, height);
         this.#canvas2 = new Canvas2(this, ctx2, canvasRight, width2, height2);
-        this.#canvas3 = new Canvas3(this, ctx3, width3, height3);
+        this.#canvas3 = new Canvas3(this, ctx3, canvasBottom, width3, height3);
 
         this.#socket = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@kline_1m/btcusdt@aggTrade/btcusdt@depth20@100ms');
         this.#socket.onmessage = (event) => {
@@ -36,11 +37,21 @@ export class CanvasController {
         this.#canvas2.canvas.addEventListener('wheel', (event) => {
             event.preventDefault();
             const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
-            let newZoomLevel = this.zoomLevel - (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
-            this.zoomLevel = Math.max(0, Math.min(newZoomLevel, 1));
+            let newZoomLevel = this.zoomYLevel - (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
+            this.zoomYLevel = Math.max(0, Math.min(newZoomLevel, 1));
         
-            this.#canvas1.zoom(this.zoomLevel);
-            this.#canvas2.zoom(this.zoomLevel);
+            this.#canvas1.zoomY(this.zoomYLevel);
+            this.#canvas2.zoomY(this.zoomYLevel);
+        });
+
+        this.#canvas3.canvas.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
+            let newZoomLevel = this.zoomXLevel + (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
+            this.zoomXLevel = Math.max(0, Math.min(newZoomLevel, 1));
+
+            this.#canvas1.zoomX(this.zoomXLevel);
+            this.#canvas3.zoomX(this.zoomXLevel);
         });
 
         const tradesDrawTypeBtn = document.getElementsByClassName("js-tradestype-button");
@@ -67,6 +78,7 @@ class Canvas1 {
     #minMultiplier = 0.997;
     #maxMultiplier = 1.003;
     #maxQuantity = 20;
+    #xZoom = 30;
     constructor(controller, ctx, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -76,7 +88,7 @@ class Canvas1 {
         this.tradesDrawType = 0;
     }
 
-    zoom(zoomLevel) {
+    zoomY(zoomLevel) {
         const minStart = 0.001;
         const minEnd = 0.01;  
         const maxStart = 0.001;
@@ -88,6 +100,13 @@ class Canvas1 {
         this.#minMultiplier = Math.round((1 - minDistance) * 10000) / 10000; 
         this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
     }       
+    zoomX(zoomLevel) {
+        const minZoom = 30;
+        const maxZoom = 10;
+        this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
+    
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
+    };
     updateData(kline, aggTrades) {
         const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
 
@@ -115,11 +134,11 @@ class Canvas1 {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
         if (this.#dataPoints.length > 0) {
-            const leftmostTime = this.#currentDataPoint.startTime - 30 * 60 * 1000; // Current time minus 30 minutes
+            const leftmostTime = this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000; // Current time minus 30 minutes
     
             this.#dataPoints.forEach((data, index) => {
                 const trades = this.#klinesTrades[index];
-                const x = Math.round((data.startTime - leftmostTime) / (30 * 60 * 1000) * (this.#width - this.#minuteWidth));
+                const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
                 this.drawDataPoint(trades, data, x);
             });
         }
@@ -170,8 +189,8 @@ class Canvas1 {
     }
     drawKlineAt(x, y, color) {
         this.#ctx.beginPath();
-        this.#ctx.moveTo(x, y);
-        this.#ctx.lineTo(x + this.#minuteWidth, y);
+        this.#ctx.moveTo(x + 5, y);
+        this.#ctx.lineTo(x + this.#minuteWidth - 5, y);
         this.#ctx.strokeStyle = color;
         this.#ctx.stroke();
     }    
@@ -229,7 +248,7 @@ class Canvas2 {
         this.#height = height;
     }
 
-    zoom(zoomLevel) {
+    zoomY(zoomLevel) {
         const minStart = 0.001;
         const minEnd = 0.01; ;
         const maxStart = 0.001; 
@@ -270,7 +289,7 @@ class Canvas2 {
         // orderbook
         this.#maxQuantity = 20;
 
-        if (this.#depth.asks.length) {
+        if (this.#depth.asks && this.#depth.bids) {
             this.#depth.asks.forEach((ask) => {
                 this.#maxQuantity = Math.max(this.#maxQuantity, parseFloat(ask[1]));
             });
@@ -318,13 +337,22 @@ class Canvas3 {
     #yMax;
     #rectangleWidth = 60;
     #minuteWidth;
-    constructor(controller, ctx, width, height) {
+    #xZoom = 30;
+    constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
+        this.canvas = canvas;
         this.#width = width;
         this.#height = height;
-        this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
+    zoomX(zoomLevel) {
+        const minZoom = 30;
+        const maxZoom = 10;
+        this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
+    
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
+    };
 
     updateData(kline) {
         const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
@@ -349,10 +377,10 @@ class Canvas3 {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
         if (this.#dataPoints.length > 0) {
-            const leftmostTime = this.#currentDataPoint.startTime - 30 * 60 * 1000; // Current time minus 30 minutes
+            const leftmostTime = this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000; // Current time minus 30 minutes
     
             this.#dataPoints.forEach((data, index) => {
-                const x = Math.round((data.startTime - leftmostTime) / (30 * 60 * 1000) * (this.#width - this.#minuteWidth));
+                const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
                 this.drawDataPoint(data, x);
             });
         }
@@ -373,15 +401,15 @@ class Canvas3 {
 
         this.drawTimeLabel(x, kline.startTime);
     
-        this.drawKlineAt(x + this.#minuteWidth/2 + 5, yBuyVolume, '#51CDA0');
-        this.drawKlineAt(x + this.#minuteWidth/2 - 5, ySellVolume, '#C0504E');
+        this.drawKlineAt(x + this.#minuteWidth/2 + this.#minuteWidth/6, yBuyVolume, '#51CDA0');
+        this.drawKlineAt(x + this.#minuteWidth/2 - this.#minuteWidth/6, ySellVolume, '#C0504E');
     }
     drawKlineAt(x, y, color) {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x, this.#height - 20);
         this.#ctx.lineTo(x, y);
         this.#ctx.strokeStyle = color;
-        this.#ctx.lineWidth = 5;
+        this.#ctx.lineWidth = this.#minuteWidth/4;
         this.#ctx.stroke();
     }     
     drawTimeLabel(x, startTime) {
