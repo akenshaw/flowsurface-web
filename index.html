@@ -45,8 +45,14 @@
             <label class="js-range-value">1</label>Px
         </menu>
         <menu id="settings-menu-3" class="settingsMenu" style="display: none;">  
-            <input type="range" class="js-line-range" min="15" max="25" value="15">   
-            <label class="js-range-value">1 </label>Cell size
+            <div class="settingsItem">
+              <input type="range" class="js-line-range" style="display: none;" min="15" max="25" value="15">   
+              <label class="js-range-value" style="display: none">1</label>
+            </div>
+            <div class="settingsItem">
+              <input type="checkbox" class="js-tradestype-button"> 
+              <label>horizontal trade quantity</label>
+            </div>
         </menu>
         <menu id="settings-menu-4" class="settingsMenu" style="display: none;">  
             <input type="color" class="js-color-picker color-picker">
