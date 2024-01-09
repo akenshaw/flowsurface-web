@@ -42,6 +42,11 @@ export class CanvasController {
             this.#canvas1.zoom(this.zoomLevel);
             this.#canvas2.zoom(this.zoomLevel);
         });
+
+        const tradesDrawTypeBtn = document.getElementsByClassName("js-tradestype-button");
+        tradesDrawTypeBtn[0].addEventListener('change', (event) => {
+            this.#canvas1.tradesDrawType = event.target.checked ? 1 : 0;
+        });
     }
 }
 
@@ -61,12 +66,14 @@ class Canvas1 {
     #minuteWidth;
     #minMultiplier = 0.997;
     #maxMultiplier = 1.003;
+    #maxQuantity = 20;
     constructor(controller, ctx, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
         this.#width = width;
         this.#height = height;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
+        this.tradesDrawType = 0;
     }
 
     zoom(zoomLevel) {
@@ -84,8 +91,8 @@ class Canvas1 {
     updateData(kline, aggTrades) {
         const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
 
-        this.#yMin = Math.min(openPrice * this.#minMultiplier, lowPrice);
-        this.#yMax = Math.max(openPrice * this.#maxMultiplier, highPrice);
+        this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
+        this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
         
         if (this.#lastOpenPrice !== openPrice) {
             if (this.#currentDataPoint) {
@@ -119,6 +126,7 @@ class Canvas1 {
         this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth));
     }                        
     drawDataPoint(trades, kline, x) {
+        this.#maxQuantity = 20;
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
 
         const yOpen = Math.round(this.#height - (kline.openPrice - this.#yMin) * scaleFactor);
@@ -129,10 +137,14 @@ class Canvas1 {
         this.drawKlineAt(x, yHigh - 2, '#c8c8c8');
         this.drawKlineAt(x, yLow + 2, '#c8c8c8');
 
+        const flatTrades = [].concat(...trades);
+        const maxQuantity = Math.max(...flatTrades.map(trade => trade.q));
+        this.#maxQuantity = maxQuantity > this.#maxQuantity ? maxQuantity : this.#maxQuantity;
+        
         // draw trades
-        trades.forEach((trade) => {
-            trade.forEach((aggTrade) => {
-                const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
+        flatTrades.forEach((aggTrade) => {
+            const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
+            if (this.tradesDrawType === 1) {
                 if (aggTrade.q < 0.01) {
                     this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.04);
                 } else if (aggTrade.q < 0.1) {
@@ -144,12 +156,11 @@ class Canvas1 {
                 } else if (aggTrade.q < 100) {
                     this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.9);
                 }
-            });
-        });    
-
-        // draw kline
-        //this.drawKlineAt(x, yOpen, 'yellow');     
-        //this.drawKlineAt(x, yClose, yClose < yOpen ? '#9BE6D1' : '#E6A1A0');
+            } else if (this.tradesDrawType === 0) {
+                const quantityScaled = this.scaleQuantity(aggTrade.q);
+                this.drawTradesAt2(x, yTradePrice, aggTrade.m, quantityScaled);
+            }
+        });  
 
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + this.#minuteWidth/2, yOpen);
@@ -168,15 +179,35 @@ class Canvas1 {
         this.#ctx.beginPath();
         if (!side) {
             this.#ctx.moveTo(x + 2 + this.#minuteWidth/2, y);
-            this.#ctx.lineTo(x + 2 + this.#minuteWidth/2 + 15, y);
+            this.#ctx.lineTo(x + 2 + this.#minuteWidth/2 + 20, y);
             this.#ctx.strokeStyle = `rgba(81, 205, 160, ${opacity})`;
         } else {
             this.#ctx.moveTo(x - 2 + this.#minuteWidth/2, y);
-            this.#ctx.lineTo(x - 2 + this.#minuteWidth/2 - 15, y);
+            this.#ctx.lineTo(x - 2 + this.#minuteWidth/2 - 20, y);
             this.#ctx.strokeStyle = `rgba(192, 80, 77, ${opacity})`; 
         }
         this.#ctx.stroke();
     }
+    drawTradesAt2(x, y, side, quantity) {    
+        this.#ctx.beginPath();
+        if (!side) {
+            this.#ctx.moveTo(x + 4 + this.#minuteWidth/2, y);
+            this.#ctx.lineTo(x + 4 + this.#minuteWidth/2 + quantity, y);
+            this.#ctx.strokeStyle = `rgba(81, 205, 160, 0.3)`;
+        } else {
+            this.#ctx.moveTo(x - 4 + this.#minuteWidth/2, y);
+            this.#ctx.lineTo(x - 4 + this.#minuteWidth/2 - quantity, y);
+            this.#ctx.strokeStyle = `rgba(192, 80, 77, 0.3)`; 
+        }
+        this.#ctx.stroke();
+    }    
+    scaleQuantity(quantity) {
+        const minQuantity = 0.001;
+        const minLineLength = 0;
+        const maxLineLength = this.#minuteWidth/2 - 4 ;
+    
+        return minLineLength + (quantity - minQuantity) * (maxLineLength - minLineLength) / (this.#maxQuantity - minQuantity);
+    }    
 }
 class Canvas2 {
     #controller;
@@ -217,14 +248,13 @@ class Canvas2 {
         const { a: asks, b: bids } = depth;
         this.#depth = { asks, bids };
     
-        this.#yMin = Math.min(openPrice * this.#minMultiplier, lowPrice);
-        this.#yMax = Math.max(openPrice * this.#maxMultiplier, highPrice);
+        this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
+        this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
 
         this.drawStart();
     };
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
-        this.#maxQuantity = 20;
     
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
         const { closePrice, openPrice } = this.#kline;
@@ -234,34 +264,35 @@ class Canvas2 {
         
         const color = yClose > yOpen ? '#C0504E' : yClose < yOpen ? '#51CDA0' : '#c8c8c8';
         this.drawTextAt(yClose, closePrice, color);
-    
         this.drawTextAt(this.#height - 10, Math.round(this.#yMin), '#c8c8c8');
         this.drawTextAt(15, Math.round(this.#yMax), '#c8c8c8');
 
+        // orderbook
+        this.#maxQuantity = 20;
+
         if (this.#depth.asks.length) {
-            this.#depth.asks.forEach((ask, index) => {
-                const y = Math.round(this.#height - (ask[0] - this.#yMin) * scaleFactor);
-                const quantity = parseFloat(ask[1]);
-                this.#maxQuantity = Math.max(this.#maxQuantity, quantity);
-        
-                this.drawLineAt(y, '#C0504E', quantity);
+            this.#depth.asks.forEach((ask) => {
+                this.#maxQuantity = Math.max(this.#maxQuantity, parseFloat(ask[1]));
             });
-            this.#depth.bids.forEach((bid, index) => {
-                const y = Math.round(this.#height - (bid[0] - this.#yMin) * scaleFactor);
-                const quantity = parseFloat(bid[1]);
-                this.#maxQuantity = Math.max(this.#maxQuantity, quantity);
-        
-                this.drawLineAt(y, '#51CDA0', quantity);
+            this.#depth.bids.forEach((bid) => {
+                this.#maxQuantity = Math.max(this.#maxQuantity, parseFloat(bid[1]));
             });
 
-            this.#ctx.font = '10px monospace';
-            this.#ctx.fillStyle = "#c8c8c8";
-            this.#ctx.fillText(Math.round(this.#maxQuantity), this.#width - 40, 40);
+            this.#depth.asks.forEach((ask, index) => {
+                const y = Math.round(this.#height - (ask[0] - this.#yMin) * scaleFactor);        
+                this.drawLineAt(y, '#C0504E', parseFloat(ask[1]));
+            });
+            this.#depth.bids.forEach((bid, index) => {
+                const y = Math.round(this.#height - (bid[0] - this.#yMin) * scaleFactor);        
+                this.drawLineAt(y, '#51CDA0', parseFloat(bid[1]));
+            });
         };
+        this.#ctx.font = '10px monospace';
+        this.#ctx.fillStyle = "#c8c8c8";
+        this.#ctx.fillText(Math.round(this.#maxQuantity), this.#width - 40, 40);
     };
     drawLineAt(y, color, quantity) {
-        const normalizedQuantity = quantity / this.#maxQuantity;
-        const scaledQuantity = normalizedQuantity * (this.#width - 80);
+        const scaledQuantity = (quantity / this.#maxQuantity) * (this.#width - 80);
     
         this.#ctx.beginPath();
         this.#ctx.moveTo(80, y);
