@@ -134,7 +134,7 @@ class Canvas1 {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
         if (this.#dataPoints.length > 0) {
-            const leftmostTime = this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000; // Current time minus 30 minutes
+            const leftmostTime = this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000; 
     
             this.#dataPoints.forEach((data, index) => {
                 const trades = this.#klinesTrades[index];
@@ -159,8 +159,7 @@ class Canvas1 {
         const flatTrades = [].concat(...trades);
         const maxQuantity = Math.max(...flatTrades.map(trade => trade.q));
         this.#maxQuantity = maxQuantity > this.#maxQuantity ? maxQuantity : this.#maxQuantity;
-        
-        // draw trades
+
         flatTrades.forEach((aggTrade) => {
             const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
             if (this.tradesDrawType === 1) {
@@ -179,7 +178,7 @@ class Canvas1 {
                 const quantityScaled = this.scaleQuantity(aggTrade.q);
                 this.drawTradesAt2(x, yTradePrice, aggTrade.m, quantityScaled);
             }
-        });  
+        });
 
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + this.#minuteWidth/2, yOpen);
@@ -198,11 +197,11 @@ class Canvas1 {
         this.#ctx.beginPath();
         if (!side) {
             this.#ctx.moveTo(x + 2 + this.#minuteWidth/2, y);
-            this.#ctx.lineTo(x + 2 + this.#minuteWidth/2 + 20, y);
+            this.#ctx.lineTo(x + 2 + this.#minuteWidth/2 + this.#minuteWidth/4, y);
             this.#ctx.strokeStyle = `rgba(81, 205, 160, ${opacity})`;
         } else {
             this.#ctx.moveTo(x - 2 + this.#minuteWidth/2, y);
-            this.#ctx.lineTo(x - 2 + this.#minuteWidth/2 - 20, y);
+            this.#ctx.lineTo(x - 2 + this.#minuteWidth/2 - this.#minuteWidth/4, y);
             this.#ctx.strokeStyle = `rgba(192, 80, 77, ${opacity})`; 
         }
         this.#ctx.stroke();
@@ -212,11 +211,11 @@ class Canvas1 {
         if (!side) {
             this.#ctx.moveTo(x + 4 + this.#minuteWidth/2, y);
             this.#ctx.lineTo(x + 4 + this.#minuteWidth/2 + quantity, y);
-            this.#ctx.strokeStyle = `rgba(81, 205, 160, 0.3)`;
+            this.#ctx.strokeStyle = `rgba(81, 205, 160, 0.4)`;
         } else {
             this.#ctx.moveTo(x - 4 + this.#minuteWidth/2, y);
             this.#ctx.lineTo(x - 4 + this.#minuteWidth/2 - quantity, y);
-            this.#ctx.strokeStyle = `rgba(192, 80, 77, 0.3)`; 
+            this.#ctx.strokeStyle = `rgba(192, 80, 77, 0.4)`; 
         }
         this.#ctx.stroke();
     }    
@@ -401,15 +400,15 @@ class Canvas3 {
 
         this.drawTimeLabel(x, kline.startTime);
     
-        this.drawKlineAt(x + this.#minuteWidth/2 + this.#minuteWidth/6, yBuyVolume, '#51CDA0');
-        this.drawKlineAt(x + this.#minuteWidth/2 - this.#minuteWidth/6, ySellVolume, '#C0504E');
+        this.drawKlineAt(x + this.#minuteWidth/2 + this.#minuteWidth/8, yBuyVolume, '#51CDA0');
+        this.drawKlineAt(x + this.#minuteWidth/2 - this.#minuteWidth/8, ySellVolume, '#C0504E');
     }
     drawKlineAt(x, y, color) {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x, this.#height - 20);
         this.#ctx.lineTo(x, y);
         this.#ctx.strokeStyle = color;
-        this.#ctx.lineWidth = this.#minuteWidth/4;
+        this.#ctx.lineWidth = this.#minuteWidth/6;
         this.#ctx.stroke();
     }     
     drawTimeLabel(x, startTime) {
