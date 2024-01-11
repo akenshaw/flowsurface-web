@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlowSurface Test Suite</title>
-  <script type="module" crossorigin src="/flowsurface/assets/index-5huMpC-g.js"></script>
-  <link rel="stylesheet" crossorigin href="/flowsurface/assets/index-yFt0Ssqq.css">
+  <script type="module" crossorigin src="/flowsurface/assets/index-TJb-nWeV.js"></script>
+  <link rel="stylesheet" crossorigin href="/flowsurface/assets/index-4NWddYEr.css">
 </head>
 <body>
     <nav>
@@ -47,10 +47,18 @@
         </menu>
         <menu id="settings-menu-3" class="settingsMenu" style="display: none;">  
             <div class="settingsItem">
-              <input type="range" class="js-line-range" style="display: none;" min="15" max="25" value="15">   
-              <label class="js-range-value" style="display: none">1</label>
+                <select id="ticksize-select" class="js-select-menu">
+                    <option value="0.1">0.1</option>
+                    <option value="0.5" selected>0.5</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                </select>
+                <label>tick size</label>
             </div>
-            <div class="settingsItem">
+            <div style="display: none;" class="settingsItem">
               <input type="checkbox" class="js-tradestype-button"> 
               <label>horizontal trade quantity</label>
             </div>

@@ -46,10 +46,18 @@
         </menu>
         <menu id="settings-menu-3" class="settingsMenu" style="display: none;">  
             <div class="settingsItem">
-              <input type="range" class="js-line-range" style="display: none;" min="15" max="25" value="15">   
-              <label class="js-range-value" style="display: none">1</label>
+                <select id="ticksize-select" class="js-select-menu">
+                    <option value="0.1">0.1</option>
+                    <option value="0.5" selected>0.5</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                </select>
+                <label>tick size</label>
             </div>
-            <div class="settingsItem">
+            <div style="display: none;" class="settingsItem">
               <input type="checkbox" class="js-tradestype-button"> 
               <label>horizontal trade quantity</label>
             </div>

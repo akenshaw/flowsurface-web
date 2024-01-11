@@ -103,6 +103,17 @@ nav {
   align-items: center;
   gap: 10px;
 }
+#ticksize-select {
+  width: 5rem;
+  height: 2rem;
+  background-color: #4f4f4f;
+  font-size: 1rem;
+  color: #c8c8c8;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  outline: none;
+  box-shadow: 0 0 20px #00000050;
+}
 .button .nav-icon {
   transition: height 150ms ease, width 150ms ease;
 }

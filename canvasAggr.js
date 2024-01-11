@@ -58,6 +58,13 @@ export class CanvasController {
         tradesDrawTypeBtn[0].addEventListener('change', (event) => {
             this.#canvas1.tradesDrawType = event.target.checked ? 1 : 0;
         });
+
+        const tickSizeBtn = document.getElementById("ticksize-select")
+        tickSizeBtn.addEventListener('change', (event) => {
+            const selectedValue = tickSizeBtn.value;
+            this.#canvas1.bucketSize = selectedValue;
+            this.#canvas1.maxQuantity = 20;
+        });
     }
 }
 
@@ -77,7 +84,6 @@ class Canvas1 {
     #minuteWidth;
     #minMultiplier = 0.997;
     #maxMultiplier = 1.003;
-    #maxQuantity = 20;
     #xZoom = 30;
     constructor(controller, ctx, width, height) {
         this.#controller = controller;
@@ -86,7 +92,9 @@ class Canvas1 {
         this.#height = height;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
         this.tradesDrawType = 0;
-    }
+        this.bucketSize = 0.5;
+        this.maxQuantity = 20;
+    };
 
     zoomY(zoomLevel) {
         const minStart = 0.001;
@@ -99,7 +107,7 @@ class Canvas1 {
     
         this.#minMultiplier = Math.round((1 - minDistance) * 10000) / 10000; 
         this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
-    }       
+    };       
     zoomX(zoomLevel) {
         const minZoom = 30;
         const maxZoom = 10;
@@ -129,7 +137,7 @@ class Canvas1 {
         this.#currentDataPoint = { startTime, endTime, openPrice, highPrice, lowPrice, closePrice };
         this.#currentKlineTrades.push(aggTrades);
         this.drawStart();
-    }    
+    };    
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
@@ -143,9 +151,8 @@ class Canvas1 {
             });
         }
         this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth));
-    }                        
+    };                      
     drawDataPoint(trades, kline, x) {
-        this.#maxQuantity = 20;
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
 
         const yOpen = Math.round(this.#height - (kline.openPrice - this.#yMin) * scaleFactor);
@@ -155,29 +162,27 @@ class Canvas1 {
 
         this.drawKlineAt(x, yHigh - 2, '#c8c8c8');
         this.drawKlineAt(x, yLow + 2, '#c8c8c8');
-
+    
         const flatTrades = [].concat(...trades);
-        const maxQuantity = Math.max(...flatTrades.map(trade => trade.q));
-        this.#maxQuantity = maxQuantity > this.#maxQuantity ? maxQuantity : this.#maxQuantity;
-
-        flatTrades.forEach((aggTrade) => {
-            const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
-            if (this.tradesDrawType === 1) {
-                if (aggTrade.q < 0.01) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.04);
-                } else if (aggTrade.q < 0.1) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.08);
-                } else if (aggTrade.q < 1) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.18);
-                } else if (aggTrade.q < 10) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.4);
-                } else if (aggTrade.q < 100) {
-                    this.drawTradesAt(x, yTradePrice, aggTrade.m, 0.9);
-                }
-            } else if (this.tradesDrawType === 0) {
-                const quantityScaled = this.scaleQuantity(aggTrade.q);
-                this.drawTradesAt2(x, yTradePrice, aggTrade.m, quantityScaled);
+    
+        // Group trades by rounded aggTrade.y and aggTrade.m and sum the quantities
+        const groupedTrades = flatTrades.reduce((acc, aggTrade) => {
+            const roundedY = this.roundToBucketSize(aggTrade.y, this.bucketSize);
+            const key = `${roundedY}-${aggTrade.m}`;
+            if (!acc[key]) {
+                acc[key] = { ...aggTrade, y: roundedY, q: 0 };
             }
+            acc[key].q += aggTrade.q;
+            return acc;
+        }, {});
+    
+        const maxQuantity = Math.max(...Object.values(groupedTrades).map(trade => trade.q));
+        this.maxQuantity = maxQuantity > this.maxQuantity ? maxQuantity : this.maxQuantity;
+    
+        Object.values(groupedTrades).forEach((aggTrade) => {
+            const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
+            const quantityScaled = this.scaleQuantity(aggTrade.q);
+            this.drawTradesAt(x, yTradePrice, aggTrade.m, quantityScaled);
         });
 
         this.#ctx.beginPath();
@@ -185,47 +190,37 @@ class Canvas1 {
         this.#ctx.lineTo(x + this.#minuteWidth/2, yClose);
         this.#ctx.strokeStyle = yClose < yOpen ? '#9BE6D1' : '#E6A1A0';
         this.#ctx.stroke();
-    }
+    };     
     drawKlineAt(x, y, color) {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + 5, y);
         this.#ctx.lineTo(x + this.#minuteWidth - 5, y);
         this.#ctx.strokeStyle = color;
         this.#ctx.stroke();
-    }    
-    drawTradesAt(x, y, side, opacity) {
-        this.#ctx.beginPath();
-        if (!side) {
-            this.#ctx.moveTo(x + 2 + this.#minuteWidth/2, y);
-            this.#ctx.lineTo(x + 2 + this.#minuteWidth/2 + this.#minuteWidth/4, y);
-            this.#ctx.strokeStyle = `rgba(81, 205, 160, ${opacity})`;
-        } else {
-            this.#ctx.moveTo(x - 2 + this.#minuteWidth/2, y);
-            this.#ctx.lineTo(x - 2 + this.#minuteWidth/2 - this.#minuteWidth/4, y);
-            this.#ctx.strokeStyle = `rgba(192, 80, 77, ${opacity})`; 
-        }
-        this.#ctx.stroke();
-    }
-    drawTradesAt2(x, y, side, quantity) {    
+    };
+    drawTradesAt(x, y, side, quantity) {    
         this.#ctx.beginPath();
         if (!side) {
             this.#ctx.moveTo(x + 4 + this.#minuteWidth/2, y);
             this.#ctx.lineTo(x + 4 + this.#minuteWidth/2 + quantity, y);
-            this.#ctx.strokeStyle = `rgba(81, 205, 160, 0.4)`;
+            this.#ctx.strokeStyle = `rgba(81, 205, 160, 1)`;
         } else {
             this.#ctx.moveTo(x - 4 + this.#minuteWidth/2, y);
             this.#ctx.lineTo(x - 4 + this.#minuteWidth/2 - quantity, y);
-            this.#ctx.strokeStyle = `rgba(192, 80, 77, 0.4)`; 
+            this.#ctx.strokeStyle = `rgba(192, 80, 77, 1)`; 
         }
         this.#ctx.stroke();
-    }    
+    };    
     scaleQuantity(quantity) {
         const minQuantity = 0.001;
         const minLineLength = 0;
         const maxLineLength = this.#minuteWidth/2 - 4 ;
     
-        return minLineLength + (quantity - minQuantity) * (maxLineLength - minLineLength) / (this.#maxQuantity - minQuantity);
-    }    
+        return minLineLength + (quantity - minQuantity) * (maxLineLength - minLineLength) / (this.maxQuantity - minQuantity);
+    }; 
+    roundToBucketSize(number, bucketSize) {
+        return Math.round(number / bucketSize) * bucketSize;
+    }  
 }
 class Canvas2 {
     #controller;
