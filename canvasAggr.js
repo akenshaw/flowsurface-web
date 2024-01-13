@@ -160,8 +160,8 @@ class Canvas1 {
         const yLow = Math.round(this.#height - (kline.lowPrice - this.#yMin) * scaleFactor);
         const yClose = Math.round(this.#height - (kline.closePrice - this.#yMin) * scaleFactor);
 
-        this.drawKlineAt(x, yHigh - 2, '#c8c8c8');
-        this.drawKlineAt(x, yLow + 2, '#c8c8c8');
+        this.drawKlineAt(x, yHigh - 2);
+        this.drawKlineAt(x, yLow + 2);
     
         const flatTrades = [].concat(...trades);
     
@@ -191,11 +191,11 @@ class Canvas1 {
         this.#ctx.strokeStyle = yClose < yOpen ? '#9BE6D1' : '#E6A1A0';
         this.#ctx.stroke();
     };     
-    drawKlineAt(x, y, color) {
+    drawKlineAt(x, y) {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + 5, y);
         this.#ctx.lineTo(x + this.#minuteWidth - 5, y);
-        this.#ctx.strokeStyle = color;
+        this.#ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
         this.#ctx.stroke();
     };
     drawTradesAt(x, y, side, quantity) {    
@@ -416,3 +416,4 @@ class Canvas3 {
         this.#ctx.fillText(time, x, this.#height - 5);
     }
 }
+
