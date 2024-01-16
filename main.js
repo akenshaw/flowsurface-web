@@ -1,67 +1,182 @@
-import { CanvasController } from "./CanvasAggr.js";
+import { CanvasController } from "./canvasAggr.js";
+import { combineDicts } from "./connectorUtils.js";
+import { WebSocketService } from "./wsBinance.js";
 
-const buttons = ['btn1', 'btn2', 'btn3', 'btn4', 'tbl-btn1'];
-const functions = [showTickers, showMenu, showSettings];
+const buttons = ['btn1', 'btn2', 'btn3', 'btn4'];
+const menuIds = ['tickers-menu', 'menu2', 'menu3', 'settings-menu']; 
+const functions = [showTickers, showMenu, showMenu, showSettings];
 
 for (let i = 0; i < buttons.length; i++) {
-  document.getElementById(buttons[i]).addEventListener('click', functions[i]);
+  const button = document.getElementById(buttons[i]);
+  button.addEventListener('click', functions[i]);
+  button.addEventListener('click', function() {
+    updateButtonState(buttons[i], menuIds[i]);
+  });
 }
 
-const menus = ['settings-menu', 'menu']
-  .map(id => document.querySelector(`#${id}`));
+const tickersMenu = document.getElementById("tickers-menu");
+const settingsMenu = document.getElementById("settings-menu");
 
-const tableBtns = ['tbl-btn1']
-  .map(id => document.querySelector(`#${id}`));
+let input = document.getElementById('ticker-search');
+let searchTerm;
+input.addEventListener('keyup', function() {
+  searchTerm = this.value.toLowerCase();
+  let rows = document.querySelectorAll('#ticker-table tbody tr');
 
-let canvas; 
-let ctx;
-let currentAnimation;
-let activeCanvasId = 0;
+  for (let row of rows) {
+    let symbol = row.cells[0].textContent.toLowerCase();
+
+    if (symbol.includes(searchTerm)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  }
+});
+
+function canvasStarter(symbol) {
+  input.value = "";
+  searchTerm = "";
+  let rows = document.querySelectorAll('#ticker-table tbody tr');
+  
+  for (let row of rows) {
+    row.style.display = '';
+  }
+
+  startCanvas(symbol);
+  showTickers();
+}
+
+function getCurrentTime() {
+  const now = new Date();
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const seconds = now.getSeconds().toString().padStart(2, '0');
+  return hours + ":" + minutes + ":" + seconds;
+}
+function updateLastUpdatedInfo() {
+  const tickersUpdateInfo = document.getElementById("tickers-update-info");
+  tickersUpdateInfo.textContent = "Last updated at " + getCurrentTime();
+}
+
 window.onload = function() {
-  console.log("load");
+  combineDicts().then((data) => {
+    generateTable(data);
+    updateLastUpdatedInfo();
+  });
 }
 window.addEventListener("resize", function() {
   console.log("resize");
 });
 
-function enableAllButtons() {
-  tableBtns.forEach(btn => btn.disabled = false);
-  menus.forEach(menu => menu.style.display = "none");
-}
-
-function showTickers() {
-  console.log("tickers");
-}
-
-function showMenu() {
-  menus[5].style.display = menus[5].style.display === "none" ? "block" : "none";
-}
-function showSettings() {
-  if (activeCanvasId >= 0 && activeCanvasId <= 4) {
-    menus[activeCanvasId].style.display = menus[activeCanvasId].style.display === "none" ? "block" : "none";
+function updateButtonState(buttonId, menuId) {
+  const menu = document.getElementById(menuId);
+  const button = document.getElementById(buttonId);
+  
+  if (menu.style.display === "block") {
+    button.classList.add('active');
+  } else {
+    button.classList.remove('active');
   }
 }
 
-function terminateCanvas() {
-  showMenu();
-  enableAllButtons();
-
-  if (currentAnimation != null) {
-    cancelAnimationFrame(currentAnimation.flowFieldAnimation);
-
-    let canvases = document.getElementsByTagName("canvas");
-    while(canvases.length > 0){
-      canvases[0].parentNode.removeChild(canvases[0]);
-    }
-  };  
+function showTickers() {  
+  input.value = "";
+  searchTerm = "";
+  let rows = document.querySelectorAll('#ticker-table tbody tr');
+  
+  for (let row of rows) {
+    row.style.display = '';
+  }
+  tickersMenu.style.display = tickersMenu.style.display === "none" ? "block" : "none";
+  updateButtonState('btn1', 'tickers-menu');
+}
+function showMenu() {
+  console.log("show menu");
+}
+function showSettings() {  
+  settingsMenu.style.display = settingsMenu.style.display === "none" ? "block" : "none";
+  updateButtonState('btn4', 'settings-menu');
 }
 
-function startCanvas() {
-  terminateCanvas();
+const tickersUpdateBtn = document.getElementById("tickers-update-btn");
+tickersUpdateBtn.addEventListener('click', function() {
+  tickersUpdateBtn.disabled = true;
+  combineDicts().then((data) => {
+    generateTable(data);
+    updateLastUpdatedInfo();
+  });
+});
 
-  tableBtns[2].disabled = true;
-  activeCanvasId = 3;
-  
+function formatNumber(value, type) {
+  let displayValue;
+  if (type === 'mark_price') {
+    if (value > 10) {
+      displayValue = Math.round(value * 100) / 100;
+    } else {
+      displayValue = Math.round(value * 10000) / 10000;
+    }
+  } else if (type === 'volume') {
+    displayValue = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+  return displayValue;
+};
+
+function generateTable(data) {
+  let tableBody = document.querySelector("#tickers-menu table tbody");
+
+  let entries = Object.entries(data);
+  entries.sort(([,a], [,b]) => b.volume - a.volume);
+
+  for (let i = 0; i < entries.length; i++) {
+    let [symbol, symbolData] = entries[i];
+    let row;
+    if (i < tableBody.rows.length) {
+      // If the row already exists, get it
+      row = tableBody.rows[i];
+    } else {
+      // If the row doesn't exist, create it
+      row = tableBody.insertRow();
+      row.insertCell(); // symbol
+      row.insertCell(); // mark_price
+      row.insertCell(); // change
+      row.insertCell(); // funding
+      row.insertCell(); // volume
+    }
+
+    row.classList.add('table-row')
+
+    row.cells[0].textContent = symbol;
+    row.cells[1].textContent = formatNumber(symbolData.mark_price, 'mark_price');
+    row.cells[2].textContent = (Math.round(symbolData.change * 100) / 100).toFixed(2) + "%";
+    row.cells[3].textContent = symbolData.funding_rate + "%";
+    row.cells[4].textContent = formatNumber(symbolData.volume, 'volume');
+
+    const chng_color_a = Math.min(Math.abs(symbolData.change/100), 1);
+    const fndng_color_a = Math.max(Math.abs(symbolData.funding_rate*50), 0.2);
+
+    if (symbolData.change < 0) {
+      row.style.backgroundColor = "rgba(192, 80, 78, " + chng_color_a*1.5 + ")";
+    } else {
+      row.style.backgroundColor = "rgba(81, 205, 160, " + chng_color_a + ")"; 
+    };
+    if (symbolData.funding_rate > 0) {
+      row.cells[3].style.color =  "rgba(212, 80, 78, " + fndng_color_a*1.5 + ")";
+    } else {
+      row.cells[3].style.color = "rgba(81, 246, 160, " + fndng_color_a*1.5 + ")";
+    };
+    row.addEventListener('click', function() { canvasStarter(symbol) });
+  }
+  tickersUpdateBtn.disabled = false;
+}; 
+
+const webSocketService = new WebSocketService();
+
+function startCanvas(symbol) {  
   // create main canvas
   let newCanvas = document.createElement("canvas");
   newCanvas.id = "canvas1";
@@ -70,8 +185,8 @@ function startCanvas() {
   newCanvas.style.top = "0px";
 
   document.body.appendChild(newCanvas);
-  canvas = document.querySelector("#canvas1")
-  ctx = canvas.getContext("2d");
+  let canvas = document.querySelector("#canvas1")
+  let ctx = canvas.getContext("2d");
   canvas.width = window.innerWidth * 0.9; 
   canvas.height = window.innerHeight * 0.9;
 
@@ -101,5 +216,24 @@ function startCanvas() {
   canvasBottom.height = window.innerHeight * 0.1; 
 
   // create controller
-  new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
+  const MainCanvas = new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
+  fetchExchangeInfo(symbol).then((tickSize) => { 
+    MainCanvas.tickSize = tickSize;
+    document.querySelector("#ticksize-select").dispatchEvent(new Event('change'));
+
+    // start websocket, send the data to the controller as it arrives
+    webSocketService.createWebSocket(symbol, data => MainCanvas.updateData(data))
+  });
+}
+
+async function fetchExchangeInfo(symbol) {
+  const response = await fetch(`https://fapi.binance.com/fapi/v1/exchangeInfo`);
+  const data = await response.json();
+
+  let symbol_info = data['symbols'].find(x => x.symbol === symbol);
+  if (symbol_info) {
+      return symbol_info['filters'][0]['tickSize'];
+  } else {
+      return null;
+  }
 }

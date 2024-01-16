@@ -1,6 +1,4 @@
-* {
-  margin: 0;
-  padding: 0;
+:root {
   box-sizing: border-box;
   font-size: 16px;
   font-family: 'Fira Mono', monospace;
@@ -14,7 +12,6 @@ canvas {
   top: 0;
   left: 0;
   z-index: -1;
-  opacity: 0.7;
 }
 nav {
   position: absolute;
@@ -26,63 +23,127 @@ nav {
   display: flex;
   flex-direction: column; 
   align-items: center;
-  padding-bottom: 4rem; 
-  padding-top: 4rem;
   box-shadow: 0 0 20px #000000;
   opacity: 0.9;
 }
 
-.button {
-  position: relative;
+.navButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 2rem;
   height: 2rem;
-  font-size: 0.8rem;
   background: #4f4f4f;
   color: #c8c8c8;
   border: 1px solid #3c3c3c;
-  padding-top: 0.2rem;
   border-radius: 8px;
-  outline: none;
   cursor: pointer;
   box-shadow: 0 0 20px #00000050;
   margin: 1rem 0;
 }
 
+#btn1 {
+  margin-top: 8vh;
+}
 #btn4 {
-  margin-top: auto; 
+  margin-top: auto;
+  margin-bottom: 8vh;
 }
-.tableButton {
-  position: relative;
-  width: 5.2rem;
-  height: 2.4rem;
+
+#tickers-menu {
   font-size: 0.8rem;
-  background: #4f4f4f;
-  color: #c8c8c8;
-  border: 1px solid #3c3c3c;
-  border-radius: 8px;
-  outline: none;
-  box-shadow: 0 0 20px #00000050;
-  margin: 0.4rem 0;
-  opacity: 0.25;
-}
-.tableButton:not(:disabled) {
-  cursor: pointer;
-  opacity: 1;
-}
-.tableButton:not(:disabled):hover {
-  background: #c8c8c8;
-  color: #212121;
-}
-#menu {
   position: absolute;
   background-color: #212121;
   border-radius: 12px;
-  padding: 1.2rem; 
+  padding: 0.6rem; 
   color: #c8c8c8;
   border: 1px solid #3c3c3c;
-  left: 100%; 
-  top: 8%;
+  left: 101%; 
+  top: 3%;
   box-shadow: 5px 0 10px #00000050;
+  height: 70vh;
+}
+#ticker-table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: right;
+}
+#ticker-table tbody tr {
+  border-bottom: 1px solid #3c3c3c;
+}
+#ticker-table tbody tr:last-child {
+  border-bottom: none;
+}
+#ticker-table thead {
+  position: sticky;
+  top: 0;
+  background-color: #4f4f4f;
+  color: #c8c8c8;
+}
+#ticker-table th, #ticker-table td {
+  padding: 0.3rem 1.5rem;
+}
+#ticker-search {
+  border-radius: 4px;
+  padding: 0.3rem;
+  background-color: #4f4f4f;
+  color: #c8c8c8;
+  border: none;
+}
+#tickers-menu-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  background-color: #212121; 
+}
+#tickers-update-btn {
+  background-color: #212121;
+  border: none;
+}
+#tickers-update {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#tickers-update-info {
+  font-size: 0.6rem;
+  letter-spacing: 0.06rem;
+  color: #c8c8c8;
+  word-spacing: -0.12rem; 
+  opacity: 0.8;
+}
+#tickers-update-btn {
+  cursor: pointer;
+  padding-top: 0.25rem;
+}
+#tickers-update-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+#tickers-update-btn:hover .nav-icon path {
+  fill: #ffffff;
+}
+#tickers-update-btn:active {
+  transform: scale(0.95);
+}
+#table-container {
+  height: calc(100% - 30px); 
+  overflow-y: auto;
+}
+.table-row {
+  cursor: pointer;
+  transition: border-left 150ms ease;
+}
+.table-row:hover {
+  border-left: 1px solid #c8c8c8;
+  color: rgba(220, 220, 220);
+}
+.table-row:active {
+  border-left: 1px solid #ffffff;
+  transform: scale(0.98);
 }
 .settingsMenu {
   position: absolute;
@@ -94,8 +155,8 @@ nav {
   padding: 1.2rem; 
   color: #c8c8c8;
   border: 1px solid #3c3c3c;
-  left: 100%;
-  bottom: 4%;
+  left: 101%;
+  bottom: 5%;
   box-shadow: 5px 0 10px #00000050;
 }
 .settingsItem {
@@ -114,20 +175,36 @@ nav {
   outline: none;
   box-shadow: 0 0 20px #00000050;
 }
-.button .nav-icon {
+.navButton .nav-icon {
   transition: height 150ms ease, width 150ms ease;
 }
-.button:hover {
+.navButton:hover {
   background: #c8c8c8;
   color: #212121;
 }
-.button:hover .nav-icon path {
+.navButton:hover .nav-icon path {
   fill: #212121;
 }
-.button:hover .nav-icon {
+.navButton:hover .nav-icon {
   height: 1.2rem;
   width: 1.2rem;
 }
-.button:active {
+.navButton:active {
   transform: scale(0.95);
+}
+.navButton.active {
+  background: #c8c8c8;
+  color: #212121;
+}
+
+.navButton.active .nav-icon path {
+  fill: #212121;
+}
+
+.navButton.active .nav-icon {
+  height: 1.2rem;
+  width: 1.2rem;
+}
+.hidden-row {
+  display: none;
 }

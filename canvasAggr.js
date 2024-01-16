@@ -4,36 +4,12 @@ export class CanvasController {
     #canvas1;
     #canvas2;
     #canvas3;
-    #socket;
-    #aggTradesBuffer = [];
-    #depth20Buffer = [];
+    tickSize;
     constructor(ctx, width, height, ctx2, canvasRight, width2, height2, ctx3, canvasBottom, width3, height3) {
         this.#canvas1 = new Canvas1(this, ctx, width, height);
         this.#canvas2 = new Canvas2(this, ctx2, canvasRight, width2, height2);
         this.#canvas3 = new Canvas3(this, ctx3, canvasBottom, width3, height3);
-
-        this.#socket = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@kline_1m/btcusdt@aggTrade/btcusdt@depth20@100ms');
-        this.#socket.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-        
-            if (message.stream.endsWith('@aggTrade')) {
-                this.#aggTradesBuffer.push({
-                    x: message.data.T,
-                    y: parseFloat(message.data.p),
-                    q: parseFloat(message.data.q),
-                    m: message.data.m,
-                });
-            } else if (message.stream.endsWith('@kline_1m')) {
-                this.#canvas1.updateData(message.data, this.#aggTradesBuffer);
-                this.#canvas2.updateData(message.data, this.#depth20Buffer); 
-                this.#canvas3.updateData(message.data);
-        
-                this.#aggTradesBuffer = [];
-            } else if (message.stream.endsWith('@depth20@100ms')) {
-                this.#depth20Buffer = message.data; 
-            }
-        };        
-
+     
         this.#canvas2.canvas.addEventListener('wheel', (event) => {
             event.preventDefault();
             const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
@@ -43,7 +19,6 @@ export class CanvasController {
             this.#canvas1.zoomY(this.zoomYLevel);
             this.#canvas2.zoomY(this.zoomYLevel);
         });
-
         this.#canvas3.canvas.addEventListener('wheel', (event) => {
             event.preventDefault();
             const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
@@ -54,17 +29,22 @@ export class CanvasController {
             this.#canvas3.zoomX(this.zoomXLevel);
         });
 
-        const tradesDrawTypeBtn = document.getElementsByClassName("js-tradestype-button");
-        tradesDrawTypeBtn[0].addEventListener('change', (event) => {
-            this.#canvas1.tradesDrawType = event.target.checked ? 1 : 0;
-        });
-
-        const tickSizeBtn = document.getElementById("ticksize-select")
+        const tickSizeBtn = document.querySelector("#ticksize-select");
         tickSizeBtn.addEventListener('change', (event) => {
-            const selectedValue = tickSizeBtn.value;
-            this.#canvas1.bucketSize = selectedValue;
+            const calculatedValue = this.tickSize * tickSizeBtn.value;
+            console.log('new tick size:', calculatedValue);
+
+            this.#canvas1.bucketSize = calculatedValue;
             this.#canvas1.maxQuantity = 20;
+
+            this.#canvas2.bucketSize = calculatedValue; 
         });
+    }
+
+    updateData(data) {
+        this.#canvas1.updateData(data.kline, data.tradesBuffer);
+        this.#canvas2.updateData(data.kline, data.depth);
+        this.#canvas3.updateData(data.kline);
     }
 }
 
@@ -85,6 +65,7 @@ class Canvas1 {
     #minMultiplier = 0.997;
     #maxMultiplier = 1.003;
     #xZoom = 30;
+    bucketSize;
     constructor(controller, ctx, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -92,7 +73,6 @@ class Canvas1 {
         this.#height = height;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
         this.tradesDrawType = 0;
-        this.bucketSize = 0.5;
         this.maxQuantity = 20;
     };
 
@@ -167,7 +147,7 @@ class Canvas1 {
     
         // Group trades by rounded aggTrade.y and aggTrade.m and sum the quantities
         const groupedTrades = flatTrades.reduce((acc, aggTrade) => {
-            const roundedY = this.roundToBucketSize(aggTrade.y, this.bucketSize);
+            const roundedY = Math.round(aggTrade.y / this.bucketSize) * this.bucketSize;
             const key = `${roundedY}-${aggTrade.m}`;
             if (!acc[key]) {
                 acc[key] = { ...aggTrade, y: roundedY, q: 0 };
@@ -217,10 +197,7 @@ class Canvas1 {
         const maxLineLength = this.#minuteWidth/2 - 4 ;
     
         return minLineLength + (quantity - minQuantity) * (maxLineLength - minLineLength) / (this.maxQuantity - minQuantity);
-    }; 
-    roundToBucketSize(number, bucketSize) {
-        return Math.round(number / bucketSize) * bucketSize;
-    }  
+    };  
 }
 class Canvas2 {
     #controller;
@@ -233,13 +210,14 @@ class Canvas2 {
     #yMax;
     #minMultiplier = 0.997;
     #maxMultiplier = 1.003;
-    #maxQuantity;
+    bucketSize;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
         this.canvas = canvas;
         this.#width = width;
         this.#height = height;
+        this.maxQuantity = 20;
     }
 
     zoomY(zoomLevel) {
@@ -258,7 +236,7 @@ class Canvas2 {
         const { k: { o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
         this.#kline = { openPrice, highPrice, lowPrice, closePrice };
         
-        const { a: asks, b: bids } = depth;
+        const { asks, bids } = depth;
         this.#depth = { asks, bids };
     
         this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
@@ -281,31 +259,41 @@ class Canvas2 {
         this.drawTextAt(15, Math.round(this.#yMax), '#c8c8c8');
 
         // orderbook
-        this.#maxQuantity = 20;
+        this.maxQuantity = 20;
 
         if (this.#depth.asks && this.#depth.bids) {
-            this.#depth.asks.forEach((ask) => {
-                this.#maxQuantity = Math.max(this.#maxQuantity, parseFloat(ask[1]));
-            });
-            this.#depth.bids.forEach((bid) => {
-                this.#maxQuantity = Math.max(this.#maxQuantity, parseFloat(bid[1]));
+            const groupByBucketSize = (orders) => {
+                return orders.reduce((grouped, order) => {
+                    const bucket = Math.round(order[0] / this.bucketSize) * this.bucketSize;
+                    if (!grouped[bucket]) grouped[bucket] = 0;
+                    grouped[bucket] += parseFloat(order[1]);
+                    return grouped;
+                }, {});
+            };
+
+            const groupedAsks = groupByBucketSize(this.#depth.asks);
+            const groupedBids = groupByBucketSize(this.#depth.bids);
+
+            const quantities = [...Object.values(groupedAsks), ...Object.values(groupedBids)];
+            this.maxQuantity = Math.max.apply(null, quantities);
+
+            Object.entries(groupedAsks).forEach(([price, quantity]) => {
+                const y = Math.round(this.#height - (price - this.#yMin) * scaleFactor);        
+                this.drawLineAt(y, '#C0504E', quantity);
             });
 
-            this.#depth.asks.forEach((ask, index) => {
-                const y = Math.round(this.#height - (ask[0] - this.#yMin) * scaleFactor);        
-                this.drawLineAt(y, '#C0504E', parseFloat(ask[1]));
-            });
-            this.#depth.bids.forEach((bid, index) => {
-                const y = Math.round(this.#height - (bid[0] - this.#yMin) * scaleFactor);        
-                this.drawLineAt(y, '#51CDA0', parseFloat(bid[1]));
+            Object.entries(groupedBids).forEach(([price, quantity]) => {
+                const y = Math.round(this.#height - (price - this.#yMin) * scaleFactor);        
+                this.drawLineAt(y, '#51CDA0', quantity);
             });
         };
+        
         this.#ctx.font = '10px monospace';
         this.#ctx.fillStyle = "#c8c8c8";
-        this.#ctx.fillText(Math.round(this.#maxQuantity), this.#width - 40, 40);
+        this.#ctx.fillText(Math.round(this.maxQuantity), this.#width - 40, 40);
     };
     drawLineAt(y, color, quantity) {
-        const scaledQuantity = (quantity / this.#maxQuantity) * (this.#width - 80);
+        const scaledQuantity = (quantity / this.maxQuantity) * (this.#width - 80);
     
         this.#ctx.beginPath();
         this.#ctx.moveTo(80, y);
