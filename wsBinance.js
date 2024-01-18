@@ -35,7 +35,6 @@ export class WebSocketService {
                 console.error('Error initializing the order book:', error);
             });
     }
-
     setupEventListeners(socket, callback) {
         socket.addEventListener('open', () => {
             this.order_book.refresh_order_book(this.#lowercaseSymbol);
@@ -76,15 +75,15 @@ export class WebSocketService {
             }
         });    
     }
-
     async handleDepth(depthStream) {  
         let finalUpdateId = depthStream.u;
         let firstUpdateId = depthStream.U;
         let previousFinalUpdateId = depthStream.pu;
     
         if (finalUpdateId < this.last_update_id) {
+            console.log('finalUpdateId < last_update_id', finalUpdateId, this.last_update_id);
             return; 
-        }
+        };
         if (this.#is_first_event) {
             if (firstUpdateId <= this.last_update_id && this.last_update_id <= finalUpdateId) {
                 console.log("First processed event succeed.")
@@ -96,7 +95,7 @@ export class WebSocketService {
         } else if (previousFinalUpdateId != this.last_update_id) {
             await this.reinitializeOrderBook(this.#lowercaseSymbol);
             return;
-        }    
+        };    
     
         await this.order_book.update_order_book(depthStream.b, depthStream.a);
         this.last_update_id = finalUpdateId;
@@ -111,9 +110,9 @@ export class WebSocketService {
     }
 }
 
-let currentSymbol;
-let shouldRefresh = true;
 class OrderBook {
+    currentSymbol;
+    shouldRefresh = true;
     order_book;
 	constructor(bids, asks) {
         console.log('worker.js: Initializing OrderBook');
@@ -126,12 +125,11 @@ class OrderBook {
 
 		return {'bids': bids_array, 'asks': asks_array};
 	};
-	
 	async refresh_order_book(symbol) {
-		currentSymbol = symbol; 
+		this.currentSymbol = symbol; 
 		let controller = new AbortController();
 		let intervalId = setInterval(async () => {
-			if (!shouldRefresh || symbol !== currentSymbol) {
+			if (!this.shouldRefresh || symbol !== this.currentSymbol) {
 				clearInterval(intervalId);
 				controller.abort(); 
 			} else {
@@ -149,7 +147,6 @@ class OrderBook {
 			}
 		}, 6000);
 	};
-
 	async update_order_book(new_bids, new_asks) {
 		let bids_array = new_bids.map(bid => bid.map(Number));
 		let asks_array = new_asks.map(ask => ask.map(Number));
@@ -157,7 +154,6 @@ class OrderBook {
 		[this.order_book['bids'], this.order_book['asks']] = await this.prepare_order_book(
 			this.order_book['bids'], this.order_book['asks'], bids_array, asks_array);
 	};
-
 	async prepare_order_book(bids, asks, new_bids, new_asks) {
 		try {
 			const bidsMap = new Map([...bids, ...new_bids].filter(bid => bid[0] >= bids[bids.length-1][0]));
@@ -172,9 +168,7 @@ class OrderBook {
 
 				console.log("Error: bids[0] >= asks[0], rehandled to: ", conc_bids[0][0], conc_asks[0][0]);
 			};
-
 			return [conc_bids, conc_asks];
-	
 		} catch (error) {
 			console.error('Error preparing order book:', error);
 	
