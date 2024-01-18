@@ -172,9 +172,8 @@ class OrderBook {
 		} catch (error) {
 			console.error('Error preparing order book:', error);
 	
-			new_bids = new_bids.filter(bid => bid[0] >= bids[bids.length-1][0]);
-			new_asks = new_asks.filter(ask => ask[0] <= asks[asks.length-1][0]);
-	
+			//new_bids = new_bids.filter(bid => bid[0] >= bids[bids.length-1][0]);
+			//new_asks = new_asks.filter(ask => ask[0] <= asks[asks.length-1][0]);
 			return [new_bids, new_asks];
 		};  
 	};
