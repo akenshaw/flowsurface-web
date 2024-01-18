@@ -134,8 +134,10 @@ nav {
   overflow-y: auto;
 }
 .table-row {
+  box-sizing: border-box;
   cursor: pointer;
   transition: border-left 150ms ease;
+  border-left: 1px solid transparent; 
 }
 .table-row:hover {
   border-left: 1px solid #c8c8c8;
