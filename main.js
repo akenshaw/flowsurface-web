@@ -108,20 +108,36 @@ tickersUpdateBtn.addEventListener('click', function() {
   });
 });
 
-function formatNumber(value, type) {
+function formatLargeNumber(num) {
+  if (num >= 1.0e+9) {
+    return (num / 1.0e+9).toFixed(2) + "b";
+  } else if (num >= 1.0e+6) {
+    return (num / 1.0e+6).toFixed(2) + "m";
+  } else if (num >= 1.0e+3) {
+    return (num / 1.0e+3).toFixed(2) + "k";
+  } else {
+    return num;
+  }
+}
+
+function formatNumber(value, type, price) {
   let displayValue;
+
   if (type === 'mark_price') {
     if (value > 10) {
       displayValue = Math.round(value * 100) / 100;
     } else {
       displayValue = Math.round(value * 10000) / 10000;
     }
+
   } else if (type === 'volume') {
-    displayValue = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(value);
+    displayValue = formatLargeNumber(value);
+    displayValue = '$' + displayValue;
+
+  } else if (type === 'open_interest') {
+    displayValue = formatLargeNumber(value*price);
+    displayValue = '$' + displayValue;
+
   }
   return displayValue;
 };
@@ -135,26 +151,28 @@ function generateTable(data) {
   for (let i = 0; i < entries.length; i++) {
     let [symbol, symbolData] = entries[i];
     let row;
+
     if (i < tableBody.rows.length) {
-      // If the row already exists, get it
       row = tableBody.rows[i];
     } else {
-      // If the row doesn't exist, create it
       row = tableBody.insertRow();
       row.insertCell(); // symbol
       row.insertCell(); // mark_price
       row.insertCell(); // change
       row.insertCell(); // funding
+      row.insertCell(); // OI
+      row.insertCell(); // OI change
       row.insertCell(); // volume
     }
-
     row.classList.add('table-row')
 
     row.cells[0].textContent = symbol;
-    row.cells[1].textContent = formatNumber(symbolData.mark_price, 'mark_price');
+    row.cells[1].textContent = formatNumber(symbolData.mark_price, 'mark_price', symbolData.mark_price);
     row.cells[2].textContent = (Math.round(symbolData.change * 100) / 100).toFixed(2) + "%";
     row.cells[3].textContent = symbolData.funding_rate + "%";
-    row.cells[4].textContent = formatNumber(symbolData.volume, 'volume');
+    row.cells[4].textContent = formatNumber(symbolData.open_interest, 'open_interest', symbolData.mark_price);
+    row.cells[5].textContent = symbolData.OI_24hrChange + "%";
+    row.cells[6].textContent = formatNumber(symbolData.volume, 'volume', symbolData.mark_price);
 
     const chng_color_a = Math.min(Math.abs(symbolData.change/100), 1);
     const fndng_color_a = Math.max(Math.abs(symbolData.funding_rate*50), 0.2);
