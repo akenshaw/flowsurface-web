@@ -46,6 +46,11 @@ export class CanvasController {
         this.#canvas2.updateData(data.kline, data.depth);
         this.#canvas3.updateData(data.kline);
     }
+    resetData() {
+        this.#canvas1.resetData();
+        this.#canvas2.resetData();
+        this.#canvas3.resetData();
+    }
 }
 
 class Canvas1 {
@@ -87,14 +92,23 @@ class Canvas1 {
     
         this.#minMultiplier = Math.round((1 - minDistance) * 10000) / 10000; 
         this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
-    };       
+    }      
     zoomX(zoomLevel) {
         const minZoom = 30;
         const maxZoom = 10;
         this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
     
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
-    };
+    }
+    resetData() {
+        this.#dataPoints = [];
+        this.#klinesTrades = [];
+        this.#currentDataPoint = null;
+        this.#currentKlineTrades = [];
+        this.#lastOpenPrice = null;
+        this.#yMin = null;
+        this.#yMax = null;
+    }
     updateData(kline, aggTrades) {
         const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
 
@@ -231,7 +245,14 @@ class Canvas2 {
     
         this.#minMultiplier = Math.round((1 - minDistance) * 10000) / 10000; 
         this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
-    };     
+    }
+
+    resetData() {
+        this.#kline = null;
+        this.#depth = null;
+        this.#yMin = null;
+        this.#yMax = null;
+    }     
     updateData(kline, depth) {
         const { k: { o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
         this.#kline = { openPrice, highPrice, lowPrice, closePrice };
@@ -243,7 +264,8 @@ class Canvas2 {
         this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
 
         this.drawStart();
-    };
+    }
+
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
@@ -291,7 +313,7 @@ class Canvas2 {
         this.#ctx.font = '10px monospace';
         this.#ctx.fillStyle = "#c8c8c8";
         this.#ctx.fillText(Math.round(this.maxQuantity), this.#width - 40, 40);
-    };
+    }
     drawLineAt(y, color, quantity) {
         const scaledQuantity = (quantity / this.maxQuantity) * (this.#width - 80);
     
@@ -301,12 +323,12 @@ class Canvas2 {
         this.#ctx.strokeStyle = color;
         this.#ctx.lineWidth = 1;
         this.#ctx.stroke();
-    };       
+    }      
     drawTextAt(y, text, color) {
         this.#ctx.font = '12px monospace';
         this.#ctx.fillStyle = color;
         this.#ctx.fillText(text, 10, y);
-    };
+    }
 }
 class Canvas3 {
     #controller;
@@ -328,14 +350,21 @@ class Canvas3 {
         this.#height = height;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
+
     zoomX(zoomLevel) {
         const minZoom = 30;
         const maxZoom = 10;
         this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
     
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
-    };
+    }
 
+    resetData() {
+        this.#dataPoints = [];
+        this.#currentDataPoint = null;
+        this.#lastStartTime = null;
+        this.#yMax = null;
+    }
     updateData(kline) {
         const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
     
@@ -355,6 +384,7 @@ class Canvas3 {
         this.#currentDataPoint = { startTime, endTime, buyVolume, sellVolume };
         this.drawStart();
     }    
+
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
