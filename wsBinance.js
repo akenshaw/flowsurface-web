@@ -7,12 +7,12 @@ export class WebSocketService {
     last_update_id;
     order_book;
     constructor() {
-        console.log('wsBinance.js: Initializing WebSocketService');
+        console.log('Initializing WebSocketService');
     }
 
     createWebSocket(symbol, callback) {
         if (this.#socket && this.#socket.readyState === 1) {
-            console.log('wsBinance.js: Closing existing websocket connection for symbol:', this.#lowercaseSymbol.toUpperCase());
+            console.log('Closing existing websocket connection for symbol:', this.#lowercaseSymbol.toUpperCase());
             this.order_book.shouldRefresh = false;
             this.#socket.close();
     
@@ -20,7 +20,7 @@ export class WebSocketService {
             this.order_book = null;
             this.#aggTradeBuffer = [];
         }
-        console.log('wsBinance.js: Creating websocket connection for symbol:', symbol);
+        console.log('Creating websocket connection for symbol:', symbol);
         this.#lowercaseSymbol = symbol.toLowerCase();
     
         fetchOrderbook(this.#lowercaseSymbol)
@@ -38,10 +38,10 @@ export class WebSocketService {
     setupEventListeners(socket, callback) {
         socket.addEventListener('open', () => {
             this.order_book.refresh_order_book(this.#lowercaseSymbol);
-            console.log('wsBinance.js: new WebSocket connection opened');
+            console.log('New WebSocket connection opened');
         });
         socket.addEventListener('close', () => {
-            console.log('wsBinance.js: previous WebSocket connection was closed');
+            console.log('Previous WebSocket connection was closed');
         });
     
         let isHandlingDepth = false;
@@ -115,7 +115,7 @@ class OrderBook {
     order_book;
     shouldRefresh = true;
 	constructor(symbol, bids, asks) {
-        console.log('wsBinance.js: initializing new OrderBook class');
+        console.log('initializing new OrderBook class');
         this.currentSymbol = symbol;
 		this.order_book = this.initialize_order_book(bids, asks);
 	};
