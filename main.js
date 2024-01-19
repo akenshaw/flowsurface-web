@@ -230,9 +230,10 @@ canvasBottom.height = window.innerHeight * 0.1;
 
 // create controller and websocket
 const webSocketService = new WebSocketService();
-const MainCanvas = new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
 
 function startCanvas(symbol) {  
+  const MainCanvas = new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
+
   fetchExchangeInfo(symbol).then((tickSize) => { 
     MainCanvas.tickSize = tickSize;
     document.querySelector("#ticksize-select").dispatchEvent(new Event('change'));
