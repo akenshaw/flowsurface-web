@@ -4,7 +4,6 @@ export class WebSocketService {
     #klineBuffer = [];
     #lowercaseSymbol;
     #is_first_event = true;
-    shouldRefresh = true;
     last_update_id;
     order_book;
     constructor() {
@@ -14,6 +13,7 @@ export class WebSocketService {
     createWebSocket(symbol, callback) {
         if (this.#socket && this.#socket.readyState === 1) {
             console.log('wsBinance.js: Closing existing websocket connection for symbol:', this.#lowercaseSymbol.toUpperCase());
+            this.order_book.shouldRefresh = false;
             this.#socket.close();
     
             this.#is_first_event = true;
@@ -29,7 +29,7 @@ export class WebSocketService {
                 this.setupEventListeners(this.#socket, callback);
     
                 this.last_update_id = depth_snapshot.lastUpdateId;
-                this.order_book = new OrderBook(depth_snapshot.bids, depth_snapshot.asks);
+                this.order_book = new OrderBook(this.#lowercaseSymbol, depth_snapshot.bids, depth_snapshot.asks);
             })
             .catch(error => {
                 console.error('Error initializing the order book:', error);
@@ -41,7 +41,7 @@ export class WebSocketService {
             console.log('wsBinance.js: new WebSocket connection opened');
         });
         socket.addEventListener('close', () => {
-            console.log('wsBinance.js: previous WebSocket connection closed');
+            console.log('wsBinance.js: previous WebSocket connection was closed');
         });
     
         let isHandlingDepth = false;
@@ -112,10 +112,11 @@ export class WebSocketService {
 
 class OrderBook {
     currentSymbol;
-    shouldRefresh = true;
     order_book;
-	constructor(bids, asks) {
-        console.log('worker.js: Initializing OrderBook');
+    shouldRefresh = true;
+	constructor(symbol, bids, asks) {
+        console.log('wsBinance.js: initializing new OrderBook class');
+        this.currentSymbol = symbol;
 		this.order_book = this.initialize_order_book(bids, asks);
 	};
 
@@ -126,7 +127,6 @@ class OrderBook {
 		return {'bids': bids_array, 'asks': asks_array};
 	};
 	async refresh_order_book(symbol) {
-		this.currentSymbol = symbol; 
 		let controller = new AbortController();
 		let intervalId = setInterval(async () => {
 			if (!this.shouldRefresh || symbol !== this.currentSymbol) {
