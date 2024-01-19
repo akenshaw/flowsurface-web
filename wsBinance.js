@@ -8,19 +8,19 @@ export class WebSocketService {
     last_update_id;
     order_book;
     constructor() {
-        console.log('worker.js: Initializing WebSocketService');
+        console.log('wsBinance.js: Initializing WebSocketService');
     }
 
     createWebSocket(symbol, callback) {
         if (this.#socket && this.#socket.readyState === 1) {
-            console.log('worker.js: Closing existing websocket connection for symbol:', this.#lowercaseSymbol.toUpperCase());
+            console.log('wsBinance.js: Closing existing websocket connection for symbol:', this.#lowercaseSymbol.toUpperCase());
             this.#socket.close();
     
             this.#is_first_event = true;
             this.order_book = null;
             this.#aggTradeBuffer = [];
         }
-        console.log('worker.js: Creating websocket connection for symbol:', symbol);
+        console.log('wsBinance.js: Creating websocket connection for symbol:', symbol);
         this.#lowercaseSymbol = symbol.toLowerCase();
     
         fetchOrderbook(this.#lowercaseSymbol)
@@ -38,10 +38,10 @@ export class WebSocketService {
     setupEventListeners(socket, callback) {
         socket.addEventListener('open', () => {
             this.order_book.refresh_order_book(this.#lowercaseSymbol);
-            console.log('worker.js: WebSocket connection opened');
+            console.log('wsBinance.js: new WebSocket connection opened');
         });
         socket.addEventListener('close', () => {
-            console.log('worker.js: WebSocket connection closed');
+            console.log('wsBinance.js: previous WebSocket connection closed');
         });
     
         let isHandlingDepth = false;
@@ -86,7 +86,7 @@ export class WebSocketService {
         };
         if (this.#is_first_event) {
             if (firstUpdateId <= this.last_update_id && this.last_update_id <= finalUpdateId) {
-                console.log("First processed event succeed.")
+                console.log("First processed event succeeded")
                 this.#is_first_event = false;
             } else {
                 await this.reinitializeOrderBook(this.#lowercaseSymbol);
