@@ -35,6 +35,8 @@ input.addEventListener('keyup', function() {
 });
 
 function canvasStarter(symbol) {
+  startCanvas(symbol);
+
   input.value = "";
   searchTerm = "";
   let rows = document.querySelectorAll('#ticker-table tbody tr');
@@ -42,10 +44,8 @@ function canvasStarter(symbol) {
   for (let row of rows) {
     row.style.display = '';
   }
-
-  startCanvas(symbol);
   showTickers();
-}
+};
 
 function getCurrentTime() {
   const now = new Date();
@@ -53,11 +53,11 @@ function getCurrentTime() {
   const minutes = now.getMinutes().toString().padStart(2, '0');
   const seconds = now.getSeconds().toString().padStart(2, '0');
   return hours + ":" + minutes + ":" + seconds;
-}
+};
 function updateLastUpdatedInfo() {
   const tickersUpdateInfo = document.getElementById("tickers-update-info");
   tickersUpdateInfo.textContent = "Last updated at " + getCurrentTime();
-}
+};
 
 window.onload = function() {
   combineDicts().then((data) => {
@@ -69,17 +69,6 @@ window.addEventListener("resize", function() {
   console.log("resize");
 });
 
-function updateButtonState(buttonId, menuId) {
-  const menu = document.getElementById(menuId);
-  const button = document.getElementById(buttonId);
-  
-  if (menu.style.display === "block") {
-    button.classList.add('active');
-  } else {
-    button.classList.remove('active');
-  }
-}
-
 function showTickers() {  
   input.value = "";
   searchTerm = "";
@@ -90,14 +79,25 @@ function showTickers() {
   }
   tickersMenu.style.display = tickersMenu.style.display === "none" ? "block" : "none";
   updateButtonState('btn1', 'tickers-menu');
-}
+};
 function showMenu() {
   console.log("show menu");
-}
+};
 function showSettings() {  
   settingsMenu.style.display = settingsMenu.style.display === "none" ? "block" : "none";
   updateButtonState('btn4', 'settings-menu');
-}
+};
+
+function updateButtonState(buttonId, menuId) {
+  const menu = document.getElementById(menuId);
+  const button = document.getElementById(buttonId);
+  
+  if (menu.style.display === "block") {
+    button.classList.add('active');
+  } else {
+    button.classList.remove('active');
+  }
+};
 
 const tickersUpdateBtn = document.getElementById("tickers-update-btn");
 tickersUpdateBtn.addEventListener('click', function() {
@@ -118,8 +118,7 @@ function formatLargeNumber(num) {
   } else {
     return num;
   }
-}
-
+};
 function formatNumber(value, type, price) {
   let displayValue;
 
@@ -141,7 +140,6 @@ function formatNumber(value, type, price) {
   }
   return displayValue;
 };
-
 function generateTable(data) {
   let tableBody = document.querySelector("#tickers-menu table tbody");
 
@@ -192,49 +190,49 @@ function generateTable(data) {
   tickersUpdateBtn.disabled = false;
 }; 
 
+// create main canvas
+let newCanvas = document.createElement("canvas");
+newCanvas.id = "canvas1";
+newCanvas.style.position = "absolute";
+newCanvas.style.left = "0px";
+newCanvas.style.top = "0px";
+
+document.body.appendChild(newCanvas);
+let canvas = document.querySelector("#canvas1")
+let ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth * 0.9; 
+canvas.height = window.innerHeight * 0.9;
+
+// create right canvas
+let newCanvasRight = document.createElement("canvas");
+newCanvasRight.id = "canvas2";
+newCanvasRight.style.position = "absolute";
+newCanvasRight.style.left = canvas.width + "px"; 
+
+document.body.appendChild(newCanvasRight);
+let canvasRight = document.querySelector("#canvas2")
+let ctxRight = canvasRight.getContext("2d");
+canvasRight.width = window.innerWidth * 0.1;
+canvasRight.height = window.innerHeight * 0.9;
+
+// create bottom canvas
+let newCanvasBottom = document.createElement("canvas");
+newCanvasBottom.id = "canvas3";
+newCanvasBottom.style.position = "absolute";
+newCanvasBottom.style.left = "0px";
+newCanvasBottom.style.top = canvas.height + "px";
+
+document.body.appendChild(newCanvasBottom);
+let canvasBottom = document.querySelector("#canvas3")
+let ctxBottom = canvasBottom.getContext("2d");
+canvasBottom.width = canvas.width; 
+canvasBottom.height = window.innerHeight * 0.1; 
+
+// create controller and websocket
 const webSocketService = new WebSocketService();
+const MainCanvas = new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
 
 function startCanvas(symbol) {  
-  // create main canvas
-  let newCanvas = document.createElement("canvas");
-  newCanvas.id = "canvas1";
-  newCanvas.style.position = "absolute";
-  newCanvas.style.left = "0px";
-  newCanvas.style.top = "0px";
-
-  document.body.appendChild(newCanvas);
-  let canvas = document.querySelector("#canvas1")
-  let ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth * 0.9; 
-  canvas.height = window.innerHeight * 0.9;
-
-  // create right canvas
-  let newCanvasRight = document.createElement("canvas");
-  newCanvasRight.id = "canvas2";
-  newCanvasRight.style.position = "absolute";
-  newCanvasRight.style.left = canvas.width + "px"; 
-
-  document.body.appendChild(newCanvasRight);
-  let canvasRight = document.querySelector("#canvas2")
-  let ctxRight = canvasRight.getContext("2d");
-  canvasRight.width = window.innerWidth * 0.1;
-  canvasRight.height = window.innerHeight * 0.9;
-
-  // create bottom canvas
-  let newCanvasBottom = document.createElement("canvas");
-  newCanvasBottom.id = "canvas3";
-  newCanvasBottom.style.position = "absolute";
-  newCanvasBottom.style.left = "0px";
-  newCanvasBottom.style.top = canvas.height + "px";
-
-  document.body.appendChild(newCanvasBottom);
-  let canvasBottom = document.querySelector("#canvas3")
-  let ctxBottom = canvasBottom.getContext("2d");
-  canvasBottom.width = canvas.width; 
-  canvasBottom.height = window.innerHeight * 0.1; 
-
-  // create controller
-  const MainCanvas = new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
   fetchExchangeInfo(symbol).then((tickSize) => { 
     MainCanvas.tickSize = tickSize;
     document.querySelector("#ticksize-select").dispatchEvent(new Event('change'));
@@ -242,7 +240,7 @@ function startCanvas(symbol) {
     // start websocket, send the data to the controller as it arrives
     webSocketService.createWebSocket(symbol, data => MainCanvas.updateData(data))
   });
-}
+};
 
 async function fetchExchangeInfo(symbol) {
   const response = await fetch(`https://fapi.binance.com/fapi/v1/exchangeInfo`);
@@ -254,4 +252,4 @@ async function fetchExchangeInfo(symbol) {
   } else {
       return null;
   }
-}
+};
