@@ -5,30 +5,25 @@ export class CanvasController {
     #canvas2;
     #canvas3;
     tickSize;
-    constructor(ctx, width, height, ctx2, canvasRight, width2, height2, ctx3, canvasBottom, width3, height3) {
-        this.#canvas1 = new Canvas1(this, ctx, width, height);
+    #kline;
+    #depth;
+    #isDragging = false;
+    #initialMousePos;
+    #autoScale = true;
+    #autoScaleBtn;
+    constructor(ctx, canvasMain, width, height, ctx2, canvasRight, width2, height2, ctx3, canvasBottom, width3, height3) {
+        this.#canvas1 = new Canvas1(this, ctx, canvasMain, width, height);
         this.#canvas2 = new Canvas2(this, ctx2, canvasRight, width2, height2);
         this.#canvas3 = new Canvas3(this, ctx3, canvasBottom, width3, height3);
-     
-        this.#canvas2.canvas.addEventListener('wheel', (event) => {
-            event.preventDefault();
-            const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
-            let newZoomLevel = this.zoomYLevel - (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
-            this.zoomYLevel = Math.max(0, Math.min(newZoomLevel, 1));
-        
-            this.#canvas1.zoomY(this.zoomYLevel);
-            this.#canvas2.zoomY(this.zoomYLevel);
-        });
-        this.#canvas3.canvas.addEventListener('wheel', (event) => {
-            event.preventDefault();
-            const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
-            let newZoomLevel = this.zoomXLevel + (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
-            this.zoomXLevel = Math.max(0, Math.min(newZoomLevel, 1));
 
-            this.#canvas1.zoomX(this.zoomXLevel);
-            this.#canvas3.zoomX(this.zoomXLevel);
+        // Auto scale 
+        this.#autoScaleBtn = document.querySelector("#btn2");
+        this.#autoScaleBtn.addEventListener('click', (event) => {
+            this.#autoScale = !this.#autoScale;
+            this.updateScaleBtn();
         });
 
+        // Tick size
         const tickSizeBtn = document.querySelector("#ticksize-select");
         tickSizeBtn.addEventListener('change', (event) => {
             const calculatedValue = this.tickSize * tickSizeBtn.value;
@@ -39,9 +34,92 @@ export class CanvasController {
 
             this.#canvas2.bucketSize = calculatedValue; 
         });
+
+        // Panning
+        this.#canvas1.canvas.addEventListener('mousedown', (event) => {
+            this.#isDragging = true;
+            this.#initialMousePos = { x: event.clientX, y: event.clientY };
+        });
+
+        this.#canvas1.canvas.addEventListener('mousemove', (event) => {
+            if (this.#isDragging) {
+                this.#autoScale = false;
+
+                let currentMousePos = { x: event.clientX, y: event.clientY };
+                let dx = currentMousePos.x - this.#initialMousePos.x;
+                let dy = currentMousePos.y - this.#initialMousePos.y;
+
+                this.#canvas1.panXY(dx, dy);
+                this.#canvas2.panY(dy);
+                this.#canvas3.panX(dx);
+
+                this.#canvas1.updateData(this.#kline, []);
+                this.#canvas2.updateData(this.#kline, this.#depth);
+                this.#canvas3.updateData(this.#kline);
+
+                this.#initialMousePos = currentMousePos;
+                this.updateScaleBtn();
+            }
+        });
+
+        this.#canvas1.canvas.addEventListener('mouseup', (event) => {
+            this.#isDragging = false;
+        });      
+
+        // Zoom Y
+        this.#canvas2.canvas.addEventListener('wheel', (event) => {
+            event.preventDefault();
+
+            this.#autoScale = false;
+
+            const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
+            let newZoomLevel = this.zoomYLevel - (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
+            this.zoomYLevel = Math.max(0, Math.min(newZoomLevel, 1));
+        
+            this.#canvas1.zoomY(this.zoomYLevel);
+            this.#canvas2.zoomY(this.zoomYLevel);
+
+            this.#canvas1.updateData(this.#kline, []);
+            this.#canvas2.updateData(this.#kline, this.#depth);
+
+            this.updateScaleBtn();
+        });
+        // Zoom X
+        this.#canvas3.canvas.addEventListener('wheel', (event) => {
+            event.preventDefault();
+
+            this.#autoScale = false;
+
+            const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
+            let newZoomLevel = this.zoomXLevel + (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
+            this.zoomXLevel = Math.max(0, Math.min(newZoomLevel, 1));
+
+            this.#canvas1.zoomX(this.zoomXLevel);
+            this.#canvas3.zoomX(this.zoomXLevel);
+
+            this.#canvas1.updateData(this.#kline, []);
+            this.#canvas3.updateData(this.#kline);
+            
+            this.updateScaleBtn();
+        });
+    }
+
+
+    updateScaleBtn() {
+        if (this.#autoScale) {
+            this.#canvas1.resetZoomAndPan();
+            this.#canvas2.resetZoomAndPan();
+            this.#canvas3.resetZoomAndPan();
+            this.#autoScaleBtn.innerHTML = '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 448 512"><path fill="#c8c8c8" d="M144 144v48H304V144c0-44.2-35.8-80-80-80s-80 35.8-80 80zM80 192V144C80 64.5 144.5 0 224 0s144 64.5 144 144v48h16c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V256c0-35.3 28.7-64 64-64H80z"/></svg>';
+        } else {
+            this.#autoScaleBtn.innerHTML = '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 576 512"><path fill="#c8c8c8" d="M352 144c0-44.2 35.8-80 80-80s80 35.8 80 80v48c0 17.7 14.3 32 32 32s32-14.3 32-32V144C576 64.5 511.5 0 432 0S288 64.5 288 144v48H64c-35.3 0-64 28.7-64 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V256c0-35.3-28.7-64-64-64H352V144z"/></svg>';
+        }
     }
 
     updateData(data) {
+        this.#kline = data.kline;
+        this.#depth = data.depth;
+
         this.#canvas1.updateData(data.kline, data.tradesBuffer);
         this.#canvas2.updateData(data.kline, data.depth);
         this.#canvas3.updateData(data.kline);
@@ -71,9 +149,12 @@ class Canvas1 {
     #maxMultiplier = 1.003;
     #xZoom = 30;
     bucketSize;
-    constructor(controller, ctx, width, height) {
+    #autoScale = true;
+    #panXoffset = 0;
+    constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
+        this.canvas = canvas;
         this.#width = width;
         this.#height = height;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
@@ -81,7 +162,20 @@ class Canvas1 {
         this.maxQuantity = 20;
     };
 
+    panXY(dx, dy) { 
+        let scalingFactor = 0.4 * (this.#yMax - this.#yMin) / 1000;
+    
+        this.#autoScale = false;
+        this.#yMin = this.#yMin + (dy * scalingFactor);
+        this.#yMax = this.#yMax + (dy * scalingFactor);
+
+        let panningOffset = (this.#minuteWidth / 1000) * dx;
+        this.#panXoffset += panningOffset * 6;
+    }
+
     zoomY(zoomLevel) {
+        this.#autoScale = true;
+
         const minStart = 0.001;
         const minEnd = 0.01;  
         const maxStart = 0.001;
@@ -94,12 +188,24 @@ class Canvas1 {
         this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
     }      
     zoomX(zoomLevel) {
+        this.#autoScale = true;
+
         const minZoom = 30;
         const maxZoom = 10;
         this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
     
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
+
+    resetZoomAndPan() {
+        this.#autoScale = true;
+        this.#panXoffset = 0;
+        this.#minMultiplier = 0.997;
+        this.#maxMultiplier = 1.003;
+        this.#xZoom = 30;
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
+    }
+
     resetData() {
         this.#dataPoints = [];
         this.#klinesTrades = [];
@@ -108,12 +214,16 @@ class Canvas1 {
         this.#lastOpenPrice = null;
         this.#yMin = null;
         this.#yMax = null;
+        this.#autoScale = true;
+        this.#panXoffset = 0;
     }
     updateData(kline, aggTrades) {
         const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
 
-        this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
-        this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
+        if (this.#autoScale) {
+            this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
+            this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
+        }
         
         if (this.#lastOpenPrice !== openPrice) {
             if (this.#currentDataPoint) {
@@ -141,10 +251,10 @@ class Canvas1 {
             this.#dataPoints.forEach((data, index) => {
                 const trades = this.#klinesTrades[index];
                 const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
-                this.drawDataPoint(trades, data, x);
+                this.drawDataPoint(trades, data, x + this.#panXoffset);
             });
         }
-        this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth));
+        this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset);
     };                      
     drawDataPoint(trades, kline, x) {
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
@@ -225,6 +335,7 @@ class Canvas2 {
     #minMultiplier = 0.997;
     #maxMultiplier = 1.003;
     bucketSize;
+    #autoScale = true;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -234,7 +345,16 @@ class Canvas2 {
         this.maxQuantity = 20;
     }
 
+    panY(dy) {
+        let scalingFactor = 0.4 * (this.#yMax - this.#yMin) / 1000;
+    
+        this.#autoScale = false;
+        this.#yMin = this.#yMin + (dy * scalingFactor);
+        this.#yMax = this.#yMax + (dy * scalingFactor);
+    }
     zoomY(zoomLevel) {
+        this.#autoScale = true;
+
         const minStart = 0.001;
         const minEnd = 0.01; ;
         const maxStart = 0.001; 
@@ -247,11 +367,17 @@ class Canvas2 {
         this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
     }
 
+    resetZoomAndPan() {
+        this.#autoScale = true;
+        this.#minMultiplier = 0.997;
+        this.#maxMultiplier = 1.003;
+    }
     resetData() {
         this.#kline = null;
         this.#depth = null;
         this.#yMin = null;
         this.#yMax = null;
+        this.#autoScale = true;
     }     
     updateData(kline, depth) {
         const { k: { o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
@@ -259,9 +385,11 @@ class Canvas2 {
         
         const { asks, bids } = depth;
         this.#depth = { asks, bids };
-    
-        this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
-        this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
+        
+        if (this.#autoScale) {
+            this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
+            this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
+        }
 
         this.drawStart();
     }
@@ -342,6 +470,7 @@ class Canvas3 {
     #rectangleWidth = 60;
     #minuteWidth;
     #xZoom = 30;
+    #panXoffset = 0;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -351,11 +480,20 @@ class Canvas3 {
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
 
+    panX(dx) {
+        let panningOffset = (this.#minuteWidth / 1000) * dx;
+        this.#panXoffset += panningOffset * 6;
+    }
     zoomX(zoomLevel) {
         const minZoom = 30;
         const maxZoom = 10;
         this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
     
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
+    }
+    resetZoomAndPan() {
+        this.#panXoffset = 0;
+        this.#xZoom = 30;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
 
@@ -364,6 +502,7 @@ class Canvas3 {
         this.#currentDataPoint = null;
         this.#lastStartTime = null;
         this.#yMax = null;
+        this.#panXoffset = 0;
     }
     updateData(kline) {
         const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
@@ -393,10 +532,10 @@ class Canvas3 {
     
             this.#dataPoints.forEach((data, index) => {
                 const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
-                this.drawDataPoint(data, x);
+                this.drawDataPoint(data, x + this.#panXoffset);
             });
         }
-        this.drawDataPoint(this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth));
+        this.drawDataPoint(this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset);
     }        
     drawDataPoint(kline, x) {
         const scaleFactor = (this.#height - 20) / this.#yMax;
