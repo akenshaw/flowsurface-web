@@ -62,10 +62,10 @@ async function fetchPremiumIndexes() {
   for (let i of data) {
     let symbol = i['symbol'];
     let funding_rate = parseFloat(i['lastFundingRate']) * 100;
-    let mark_price = i['markPrice'];
+    let mark_price = parseFloat(i['markPrice']);
 
     fr_dict[symbol] = {
-      'funding_rate': Math.round(funding_rate * 10000) / 10000,
+      'funding_rate': parseFloat(funding_rate.toFixed(3)),
       'mark_price': Math.round(mark_price * 10000) / 10000
     };
   }
