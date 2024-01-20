@@ -4,7 +4,7 @@ import { WebSocketService } from "./wsBinance.js";
 
 const buttons = ['btn1', 'btn2', 'btn3', 'btn4'];
 const menuIds = ['tickers-menu', 'menu2', 'menu3', 'settings-menu']; 
-const functions = [showTickers, showMenu, showMenu, showSettings];
+const functions = [showTickers, autoScaleToggle, showMenu, showSettings];
 
 for (let i = 0; i < buttons.length; i++) {
   const button = document.getElementById(buttons[i]);
@@ -83,6 +83,8 @@ function showTickers() {
 function showMenu() {
   console.log("show menu");
 };
+function autoScaleToggle() {
+};
 function showSettings() {  
   settingsMenu.style.display = settingsMenu.style.display === "none" ? "block" : "none";
   updateButtonState('btn4', 'settings-menu');
@@ -92,11 +94,13 @@ function updateButtonState(buttonId, menuId) {
   const menu = document.getElementById(menuId);
   const button = document.getElementById(buttonId);
   
-  if (menu.style.display === "block") {
-    button.classList.add('active');
-  } else {
-    button.classList.remove('active');
-  }
+  if (buttonId === 'btn1' || buttonId === 'btn4') {
+    if (menu.style.display === "block") {
+      button.classList.add('active');
+    } else {
+      button.classList.remove('active');
+    }
+  };
 };
 
 const tickersUpdateBtn = document.getElementById("tickers-update-btn");
@@ -230,7 +234,7 @@ canvasBottom.height = window.innerHeight * 0.1;
 
 // create controller and websocket
 const webSocketService = new WebSocketService();
-const MainCanvas = new CanvasController(ctx, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
+const MainCanvas = new CanvasController(ctx, canvas, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
 
 function startCanvas(symbol) {  
   MainCanvas.resetData();
