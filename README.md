@@ -1,4 +1,3 @@
-## **Cryptocurrency market aggregator for visualizing orderflow & footprint**
 - Works completely on client-side, rendering happens on 2D canvas
 #
 ### Currently supports;
