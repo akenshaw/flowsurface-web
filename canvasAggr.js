@@ -140,6 +140,8 @@ export class CanvasController {
         this.#canvas3.updateData(data.kline);
     }
     resetData() {
+        this.#autoScale = true;
+        this.updateScaleBtn();
         this.#canvas1.resetData();
         this.#canvas2.resetData();
         this.#canvas3.resetData();
