@@ -11,6 +11,7 @@ export class CanvasController {
     #initialMousePos;
     #autoScale = true;
     #autoScaleBtn;
+    #isAnimationFrameRequested = false;
     constructor(ctx, canvasMain, width, height, ctx2, canvasRight, width2, height2, ctx3, canvasBottom, width3, height3) {
         this.#canvas1 = new Canvas1(this, ctx, canvasMain, width, height);
         this.#canvas2 = new Canvas2(this, ctx2, canvasRight, width2, height2);
@@ -40,31 +41,33 @@ export class CanvasController {
             this.#isDragging = true;
             this.#initialMousePos = { x: event.clientX, y: event.clientY };
         });
-
         this.#canvas1.canvas.addEventListener('mousemove', (event) => {
             if (this.#isDragging) {
                 this.#autoScale = false;
-
+                
                 let currentMousePos = { x: event.clientX, y: event.clientY };
                 let dx = currentMousePos.x - this.#initialMousePos.x;
                 let dy = currentMousePos.y - this.#initialMousePos.y;
 
-                this.#canvas1.panXY(dx, dy);
-                this.#canvas2.panY(dy);
-                this.#canvas3.panX(dx);
+                if (!this.#isAnimationFrameRequested) {
+                    this.#isAnimationFrameRequested = true;
+                    requestAnimationFrame(() => {
+                        this.#canvas1.panXY(dx, dy);
+                        this.#canvas2.panY(dy);
+                        this.#canvas3.panX(dx);
+        
+                        this.#canvas1.updateData(this.#kline, []);
+                        this.#canvas2.updateData(this.#kline, this.#depth);
+                        this.#canvas3.updateData(this.#kline);
 
-                this.#canvas1.updateData(this.#kline, []);
-                this.#canvas2.updateData(this.#kline, this.#depth);
-                this.#canvas3.updateData(this.#kline);
-
+                        this.#isAnimationFrameRequested = false;
+                    });
+                }
                 this.#initialMousePos = currentMousePos;
                 this.updateScaleBtn();
             }
         });
-
-        this.#canvas1.canvas.addEventListener('mouseup', (event) => {
-            this.#isDragging = false;
-        });      
+        ['mouseup', 'mouseleave'].forEach(event => this.#canvas1.canvas.addEventListener(event, () => this.#isDragging = false));
 
         // Zoom Y
         this.#canvas2.canvas.addEventListener('wheel', (event) => {
@@ -75,14 +78,20 @@ export class CanvasController {
             const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
             let newZoomLevel = this.zoomYLevel - (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
             this.zoomYLevel = Math.max(0, Math.min(newZoomLevel, 1));
-        
-            this.#canvas1.zoomY(this.zoomYLevel);
-            this.#canvas2.zoomY(this.zoomYLevel);
+            
+            if (!this.#isAnimationFrameRequested) {
+                this.#isAnimationFrameRequested = true;
+                requestAnimationFrame(() => {
+                    this.#canvas1.zoomY(this.zoomYLevel);
+                    this.#canvas2.zoomY(this.zoomYLevel);
 
-            this.#canvas1.updateData(this.#kline, []);
-            this.#canvas2.updateData(this.#kline, this.#depth);
+                    this.#canvas1.updateData(this.#kline, []);
+                    this.#canvas2.updateData(this.#kline, this.#depth);
 
+                    this.#isAnimationFrameRequested = false;
+                });
             this.updateScaleBtn();
+            };
         });
         // Zoom X
         this.#canvas3.canvas.addEventListener('wheel', (event) => {
@@ -94,12 +103,18 @@ export class CanvasController {
             let newZoomLevel = this.zoomXLevel + (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
             this.zoomXLevel = Math.max(0, Math.min(newZoomLevel, 1));
 
-            this.#canvas1.zoomX(this.zoomXLevel);
-            this.#canvas3.zoomX(this.zoomXLevel);
+            if (!this.#isAnimationFrameRequested) {
+                this.#isAnimationFrameRequested = true;
+                requestAnimationFrame(() => {
+                    this.#canvas1.zoomX(this.zoomXLevel);
+                    this.#canvas3.zoomX(this.zoomXLevel);
 
-            this.#canvas1.updateData(this.#kline, []);
-            this.#canvas3.updateData(this.#kline);
-            
+                    this.#canvas1.updateData(this.#kline, []);
+                    this.#canvas3.updateData(this.#kline);
+
+                    this.#isAnimationFrameRequested = false;
+                });
+            };  
             this.updateScaleBtn();
         });
     }
@@ -151,6 +166,7 @@ class Canvas1 {
     bucketSize;
     #autoScale = true;
     #panXoffset = 0;
+    #panYoffset = 0;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -163,19 +179,15 @@ class Canvas1 {
     };
 
     panXY(dx, dy) { 
-        let scalingFactor = 0.4 * (this.#yMax - this.#yMin) / 1000;
-    
         this.#autoScale = false;
-        this.#yMin = this.#yMin + (dy * scalingFactor);
-        this.#yMax = this.#yMax + (dy * scalingFactor);
 
-        let panningOffset = (this.#minuteWidth / 1000) * dx;
-        this.#panXoffset += panningOffset * 6;
+        const yScaleFactor = this.#height / (this.#yMax - this.#yMin);
+        const yDataMovement = dy / yScaleFactor;
+    
+        this.#panYoffset += yDataMovement;
+        this.#panXoffset += dx;
     }
-
     zoomY(zoomLevel) {
-        this.#autoScale = true;
-
         const minStart = 0.001;
         const minEnd = 0.01;  
         const maxStart = 0.001;
@@ -188,24 +200,21 @@ class Canvas1 {
         this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
     }      
     zoomX(zoomLevel) {
-        this.#autoScale = true;
-
         const minZoom = 30;
         const maxZoom = 10;
         this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
     
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
-
     resetZoomAndPan() {
         this.#autoScale = true;
         this.#panXoffset = 0;
+        this.#panYoffset = 0;
         this.#minMultiplier = 0.997;
         this.#maxMultiplier = 1.003;
         this.#xZoom = 30;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
-
     resetData() {
         this.#dataPoints = [];
         this.#klinesTrades = [];
@@ -216,14 +225,13 @@ class Canvas1 {
         this.#yMax = null;
         this.#autoScale = true;
         this.#panXoffset = 0;
+        this.#panYoffset = 0;
     }
     updateData(kline, aggTrades) {
         const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
 
-        if (this.#autoScale) {
-            this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
-            this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
-        }
+        this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice) + this.#panYoffset;
+        this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice) + this.#panYoffset;
         
         if (this.#lastOpenPrice !== openPrice) {
             if (this.#currentDataPoint) {
@@ -336,6 +344,7 @@ class Canvas2 {
     #maxMultiplier = 1.003;
     bucketSize;
     #autoScale = true;
+    #panYoffset = 0;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -345,16 +354,15 @@ class Canvas2 {
         this.maxQuantity = 20;
     }
 
-    panY(dy) {
-        let scalingFactor = 0.4 * (this.#yMax - this.#yMin) / 1000;
-    
+    panY(dy) { 
         this.#autoScale = false;
-        this.#yMin = this.#yMin + (dy * scalingFactor);
-        this.#yMax = this.#yMax + (dy * scalingFactor);
+
+        const yScaleFactor = this.#height / (this.#yMax - this.#yMin);
+        const yDataMovement = dy / yScaleFactor;
+    
+        this.#panYoffset += yDataMovement;
     }
     zoomY(zoomLevel) {
-        this.#autoScale = true;
-
         const minStart = 0.001;
         const minEnd = 0.01; ;
         const maxStart = 0.001; 
@@ -371,6 +379,7 @@ class Canvas2 {
         this.#autoScale = true;
         this.#minMultiplier = 0.997;
         this.#maxMultiplier = 1.003;
+        this.#panYoffset = 0;
     }
     resetData() {
         this.#kline = null;
@@ -386,10 +395,8 @@ class Canvas2 {
         const { asks, bids } = depth;
         this.#depth = { asks, bids };
         
-        if (this.#autoScale) {
-            this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice);
-            this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice);
-        }
+        this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice) + this.#panYoffset;
+        this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice) + this.#panYoffset;
 
         this.drawStart();
     }
@@ -480,9 +487,8 @@ class Canvas3 {
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
 
-    panX(dx) {
-        let panningOffset = (this.#minuteWidth / 1000) * dx;
-        this.#panXoffset += panningOffset * 6;
+    panX(dx) { 
+        this.#panXoffset += dx;
     }
     zoomX(zoomLevel) {
         const minZoom = 30;
