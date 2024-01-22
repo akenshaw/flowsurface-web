@@ -69,6 +69,37 @@ export class CanvasController {
         });
         ['mouseup', 'mouseleave'].forEach(event => this.#canvas1.canvas.addEventListener(event, () => this.#isDragging = false));
 
+        // Zoom Main 
+        this.#canvas1.canvas.addEventListener('wheel', (event) => {
+            event.preventDefault();
+
+            this.#autoScale = false;
+
+            const deltaZoomLevel = 0.0005 / (0.01 - 0.001);
+            let newYZoomLevel = this.zoomYLevel - (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
+            let newXZoomLevel = this.zoomXLevel + (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
+
+            this.zoomYLevel = Math.max(0, Math.min(newYZoomLevel, 1));
+            this.zoomXLevel = Math.max(0, Math.min(newXZoomLevel, 1));
+            
+            if (!this.#isAnimationFrameRequested) {
+                this.#isAnimationFrameRequested = true;
+                requestAnimationFrame(() => {
+                    this.#canvas1.zoomY(this.zoomYLevel);
+                    this.#canvas1.zoomX(this.zoomXLevel);
+                    this.#canvas2.zoomY(this.zoomYLevel);
+                    this.#canvas3.zoomX(this.zoomXLevel);
+
+                    this.#canvas1.updateData(this.#kline, []);
+                    this.#canvas2.updateData(this.#kline, this.#depth);
+                    this.#canvas3.updateData(this.#kline);
+
+                    this.#isAnimationFrameRequested = false;
+                });
+            this.updateScaleBtn();
+            };
+        });
+
         // Zoom Y
         this.#canvas2.canvas.addEventListener('wheel', (event) => {
             event.preventDefault();
@@ -185,9 +216,9 @@ class Canvas1 {
 
         const yScaleFactor = this.#height / (this.#yMax - this.#yMin);
         const yDataMovement = dy / yScaleFactor;
-    
+
         this.#panYoffset += yDataMovement;
-        this.#panXoffset += dx;
+        this.#panXoffset = this.#panXoffset + dx < 0 ? 0 : this.#panXoffset + dx;
     }
     zoomY(zoomLevel) {
         const minStart = 0.001;
@@ -256,8 +287,7 @@ class Canvas1 {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
         if (this.#dataPoints.length > 0) {
-            const leftmostTime = this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000; 
-    
+            const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset;     
             this.#dataPoints.forEach((data, index) => {
                 const trades = this.#klinesTrades[index];
                 const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
@@ -490,7 +520,7 @@ class Canvas3 {
     }
 
     panX(dx) { 
-        this.#panXoffset += dx;
+        this.#panXoffset = this.#panXoffset + dx < 0 ? 0 : this.#panXoffset + dx;
     }
     zoomX(zoomLevel) {
         const minZoom = 30;
@@ -536,8 +566,7 @@ class Canvas3 {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
         if (this.#dataPoints.length > 0) {
-            const leftmostTime = this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000; // Current time minus 30 minutes
-    
+            const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset; 
             this.#dataPoints.forEach((data, index) => {
                 const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
                 this.drawDataPoint(data, x + this.#panXoffset);
