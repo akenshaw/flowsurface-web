@@ -68,7 +68,6 @@ export class CanvasController {
             }
         });
         ['mouseup', 'mouseleave'].forEach(event => this.#canvas1.canvas.addEventListener(event, () => this.#isDragging = false));
-
         // Zoom Main 
         this.#canvas1.canvas.addEventListener('wheel', (event) => {
             event.preventDefault();
@@ -99,7 +98,6 @@ export class CanvasController {
             this.updateScaleBtn();
             };
         });
-
         // Zoom Y
         this.#canvas2.canvas.addEventListener('wheel', (event) => {
             event.preventDefault();
@@ -150,7 +148,6 @@ export class CanvasController {
         });
     }
 
-
     updateScaleBtn() {
         if (this.#autoScale) {
             this.#canvas1.resetZoomAndPan();
@@ -161,7 +158,6 @@ export class CanvasController {
             this.#autoScaleBtn.innerHTML = '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 576 512"><path fill="#c8c8c8" d="M352 144c0-44.2 35.8-80 80-80s80 35.8 80 80v48c0 17.7 14.3 32 32 32s32-14.3 32-32V144C576 64.5 511.5 0 432 0S288 64.5 288 144v48H64c-35.3 0-64 28.7-64 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V256c0-35.3-28.7-64-64-64H352V144z"/></svg>';
         }
     }
-
     updateData(data) {
         this.#kline = data.kline;
         this.#depth = data.depth;
@@ -176,6 +172,8 @@ export class CanvasController {
         this.#canvas1.resetData();
         this.#canvas2.resetData();
         this.#canvas3.resetData();
+        this.zoomYLevel = 0.2222;
+        this.zoomXLevel = 0;
     }
 }
 
@@ -282,7 +280,7 @@ class Canvas1 {
         this.#currentDataPoint = { startTime, endTime, openPrice, highPrice, lowPrice, closePrice };
         this.#currentKlineTrades.push(aggTrades);
         this.drawStart();
-    };    
+    }    
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
@@ -295,7 +293,7 @@ class Canvas1 {
             });
         }
         this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset);
-    };                      
+    }                      
     drawDataPoint(trades, kline, x) {
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
 
@@ -334,14 +332,14 @@ class Canvas1 {
         this.#ctx.lineTo(x + this.#minuteWidth/2, yClose);
         this.#ctx.strokeStyle = yClose < yOpen ? '#9BE6D1' : '#E6A1A0';
         this.#ctx.stroke();
-    };     
+    }     
     drawKlineAt(x, y) {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + 5, y);
         this.#ctx.lineTo(x + this.#minuteWidth - 5, y);
         this.#ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
         this.#ctx.stroke();
-    };
+    }
     drawTradesAt(x, y, side, quantity) {    
         this.#ctx.beginPath();
         if (!side) {
@@ -354,14 +352,14 @@ class Canvas1 {
             this.#ctx.strokeStyle = `rgba(192, 80, 77, 1)`; 
         }
         this.#ctx.stroke();
-    };    
+    }    
     scaleQuantity(quantity) {
         const minQuantity = 0.001;
         const minLineLength = 0;
         const maxLineLength = this.#minuteWidth/2 - 4 ;
     
         return minLineLength + (quantity - minQuantity) * (maxLineLength - minLineLength) / (this.maxQuantity - minQuantity);
-    };  
+    }  
 }
 class Canvas2 {
     #controller;
@@ -406,7 +404,6 @@ class Canvas2 {
         this.#minMultiplier = Math.round((1 - minDistance) * 10000) / 10000; 
         this.#maxMultiplier = Math.round((1 + maxDistance) * 10000) / 10000; 
     }
-
     resetZoomAndPan() {
         this.#autoScale = true;
         this.#minMultiplier = 0.997;
@@ -534,7 +531,6 @@ class Canvas3 {
         this.#xZoom = 30;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
-
     resetData() {
         this.#dataPoints = [];
         this.#currentDataPoint = null;

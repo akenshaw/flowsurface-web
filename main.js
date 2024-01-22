@@ -237,14 +237,13 @@ const webSocketService = new WebSocketService();
 const MainCanvas = new CanvasController(ctx, canvas, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
 
 function startCanvas(symbol) {  
-  MainCanvas.resetData();
-  
   fetchExchangeInfo(symbol).then((tickSize) => { 
+    // start websocket, send the data to the controller as it arrives
+    webSocketService.createWebSocket(symbol, data => MainCanvas.updateData(data));
+
+    MainCanvas.resetData();
     MainCanvas.tickSize = tickSize;
     document.querySelector("#ticksize-select").dispatchEvent(new Event('change'));
-
-    // start websocket, send the data to the controller as it arrives
-    webSocketService.createWebSocket(symbol, data => MainCanvas.updateData(data))
   });
 };
 
