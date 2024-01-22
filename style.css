@@ -145,7 +145,7 @@ nav {
 }
 .table-row:active {
   border-left: 1px solid #ffffff;
-  transform: scale(0.98);
+  transform: scale(0.99);
 }
 .settingsMenu {
   position: absolute;
