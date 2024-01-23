@@ -36,6 +36,7 @@ input.addEventListener('keyup', function() {
 
 function canvasStarter(symbol) {
   startCanvas(symbol);
+  console.log("canvas was started with symbol: " + symbol);
 
   input.value = "";
   searchTerm = "";
@@ -109,6 +110,7 @@ tickersUpdateBtn.addEventListener('click', function() {
   combineDicts().then((data) => {
     generateTable(data);
     updateLastUpdatedInfo();
+    tickersUpdateBtn.disabled = false;
   });
 });
 
@@ -146,6 +148,7 @@ function formatNumber(value, type, price) {
 };
 function generateTable(data) {
   let tableBody = document.querySelector("#tickers-menu table tbody");
+  tableBody.innerHTML = '';
 
   let entries = Object.entries(data);
   entries.sort(([,a], [,b]) => b.volume - a.volume);
@@ -191,7 +194,6 @@ function generateTable(data) {
     };
     row.addEventListener('click', function() { canvasStarter(symbol) });
   }
-  tickersUpdateBtn.disabled = false;
 }; 
 
 // create main canvas
