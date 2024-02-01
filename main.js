@@ -221,12 +221,30 @@ let ctxRight = canvasRight.getContext("2d");
 canvasRight.width = window.innerWidth * 0.1;
 canvasRight.height = window.innerHeight * 0.9;
 
+// adjust the height of the main canvas
+let oldCanvasHeight = canvas.height;
+canvas.height = oldCanvasHeight - window.innerHeight * 0.1;
+canvasRight.height = oldCanvasHeight - window.innerHeight * 0.1;
+
+// create inside canvas
+let newCanvasInside = document.createElement("canvas");
+newCanvasInside.id = "canvas4";
+newCanvasInside.style.position = "absolute";
+newCanvasInside.style.left = "0px";
+newCanvasInside.style.top = canvas.height + "px"; 
+
+document.body.appendChild(newCanvasInside);
+let canvasInside = document.querySelector("#canvas4")
+let ctxInside = canvasInside.getContext("2d");
+canvasInside.width = window.innerWidth * 0.9;
+canvasInside.height = window.innerHeight * 0.1; 
+
 // create bottom canvas
 let newCanvasBottom = document.createElement("canvas");
 newCanvasBottom.id = "canvas3";
 newCanvasBottom.style.position = "absolute";
 newCanvasBottom.style.left = "0px";
-newCanvasBottom.style.top = canvas.height + "px";
+newCanvasBottom.style.top = (canvas.height + canvasInside.height) + "px";
 
 document.body.appendChild(newCanvasBottom);
 let canvasBottom = document.querySelector("#canvas3")
@@ -236,15 +254,14 @@ canvasBottom.height = window.innerHeight * 0.1;
 
 // create controller and websocket
 const webSocketService = new WebSocketService();
-const MainCanvas = new CanvasController(ctx, canvas, canvas.width, canvas.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
+const MainCanvas = new CanvasController(ctx, canvas, canvas.width, canvas.height, ctxInside, canvasInside, canvasInside.width, canvasInside.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
 
 function startCanvas(symbol) {  
   fetchExchangeInfo(symbol).then((tickSize) => { 
     // start websocket, send the data to the controller as it arrives
     webSocketService.createWebSocket(symbol, data => MainCanvas.updateData(data));
 
-    MainCanvas.resetData();
-    MainCanvas.tickSize = tickSize;
+    MainCanvas.startNew(symbol, tickSize);
     document.querySelector("#ticksize-select").dispatchEvent(new Event('change'));
   });
 };
