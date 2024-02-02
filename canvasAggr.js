@@ -6,7 +6,7 @@ export class CanvasController {
     #canvas1;
     #canvas2;
     #canvas3;
-    #canvasInside
+    #canvas4;
     #tickSize;
     #kline;
     #depth;
@@ -14,20 +14,53 @@ export class CanvasController {
     #initialMousePos;
     #autoScale = true;
     #autoScaleBtn;
+    #cvdBtnActive = true;
+    #oiBtnActive = true;
     #isAnimationFrameRequested = false;
-    constructor(ctx, canvasMain, width, height, ctxInside, canvasInside, widthInside, heightInside, ctx2, canvasRight, width2, height2, ctx3, canvasBottom, width3, height3) {
-        this.#canvas1 = new Canvas1(this, ctx, canvasMain, width, height);
-        this.#canvas2 = new Canvas2(this, ctx2, canvasRight, width2, height2);
-        this.#canvas3 = new Canvas3(this, ctx3, canvasBottom, width3, height3);
-        this.#canvasInside = new CanvasInside(this, ctxInside, canvasInside, widthInside, heightInside);
+    constructor(ctx1, canvas1, width1, height1, ctx2, canvas2, width2, height2, ctx3, canvas3, width3, height3, ctx4, canvas4, width4, height4) {
+        this.#canvas1 = new Canvas1(this, ctx1, canvas1, width1, height1);
+        this.#canvas2 = new Canvas2(this, ctx2, canvas2, width2, height2);
+        this.#canvas3 = new Canvas3(this, ctx3, canvas3, width3, height3);
+        this.#canvas4 = new Canvas4(this, ctx4, canvas4, width4, height4);
+  
+        // CVD and OI buttons
+        document.querySelectorAll('#top-nav button').forEach((button) => {
+            button.addEventListener('click', function(event) {
+                const clickedButton = event.target;
+                if (clickedButton.id === 'tf1m' || clickedButton.id === 'tf3m' || clickedButton.id === 'tf5m' || clickedButton.id === 'tf15m') {
+                    return;
+                }
+                clickedButton.classList.toggle('disabled');
 
+                if (clickedButton.id === 'cvdToggleBtn') {
+                    this.#cvdBtnActive = !this.#cvdBtnActive;
+                    this.#canvas4.toggleIndicator("cvd", this.#cvdBtnActive);
+                } else if (clickedButton.id === 'oiToggleBtn') {
+                    this.#oiBtnActive = !this.#oiBtnActive;
+                    this.#canvas4.toggleIndicator("oi", this.#oiBtnActive);
+                };
+
+                if (!this.#cvdBtnActive && !this.#oiBtnActive) {
+                    document.querySelector("#canvas4").style.display = "none";
+                    document.querySelector("#canvas1").style.height = "90%";
+                    document.querySelector("#canvas2").style.height = "90%";
+                    document.querySelector("#canvas3").style.height = "10%";
+                    document.querySelector("#canvas3").style.top = "90%";
+                } else {
+                    document.querySelector("#canvas4").style.display = "flex";
+                    document.querySelector("#canvas1").style.height = "80%";
+                    document.querySelector("#canvas2").style.height = "80%";
+                    document.querySelector("#canvas3").style.height = "10%";
+                    document.querySelector("#canvas3").style.top = "90%";
+                };                
+            }.bind(this)); 
+        });
         // Auto scale 
         this.#autoScaleBtn = document.querySelector("#btn2");
         this.#autoScaleBtn.addEventListener('click', (event) => {
             this.#autoScale = !this.#autoScale;
             this.updateScaleBtn();
         });
-
         // Tick size
         const tickSizeBtn = document.querySelector("#ticksize-select");
         tickSizeBtn.addEventListener('change', (event) => {
@@ -39,7 +72,6 @@ export class CanvasController {
 
             this.#canvas2.bucketSize = calculatedValue; 
         });
-
         // Panning
         this.#canvas1.canvas.addEventListener('mousedown', (event) => {
             this.#isDragging = true;
@@ -59,12 +91,12 @@ export class CanvasController {
                         this.#canvas1.panXY(dx, dy);
                         this.#canvas2.panY(dy);
                         this.#canvas3.panX(dx);
-                        this.#canvasInside.panX(dx);
+                        this.#canvas4.panX(dx);
         
                         this.#canvas1.updateData(this.#kline, []);
                         this.#canvas2.updateData(this.#kline, this.#depth);
                         this.#canvas3.updateData(this.#kline);
-                        this.#canvasInside.updateData(this.#kline);
+                        this.#canvas4.updateData(this.#kline);
 
                         this.#isAnimationFrameRequested = false;
                     });
@@ -94,12 +126,12 @@ export class CanvasController {
                     this.#canvas1.zoomX(this.zoomXLevel);
                     this.#canvas2.zoomY(this.zoomYLevel);
                     this.#canvas3.zoomX(this.zoomXLevel);
-                    this.#canvasInside.zoomX(this.zoomXLevel);
+                    this.#canvas4.zoomX(this.zoomXLevel);
 
                     this.#canvas1.updateData(this.#kline, []);
                     this.#canvas2.updateData(this.#kline, this.#depth);
                     this.#canvas3.updateData(this.#kline);
-                    this.#canvasInside.updateData(this.#kline);
+                    this.#canvas4.updateData(this.#kline);
 
                     this.#isAnimationFrameRequested = false;
                 });
@@ -145,11 +177,11 @@ export class CanvasController {
                 requestAnimationFrame(() => {
                     this.#canvas1.zoomX(this.zoomXLevel);
                     this.#canvas3.zoomX(this.zoomXLevel);
-                    this.#canvasInside.zoomX(this.zoomXLevel);
+                    this.#canvas4.zoomX(this.zoomXLevel);
 
                     this.#canvas1.updateData(this.#kline, []);
                     this.#canvas3.updateData(this.#kline);
-                    this.#canvasInside.updateData(this.#kline);
+                    this.#canvas4.updateData(this.#kline);
 
                     this.#isAnimationFrameRequested = false;
                 });
@@ -163,7 +195,7 @@ export class CanvasController {
             this.#canvas1.resetZoomAndPan();
             this.#canvas2.resetZoomAndPan();
             this.#canvas3.resetZoomAndPan();
-            this.#canvasInside.resetZoomAndPan();
+            this.#canvas4.resetZoomAndPan();
             this.#autoScaleBtn.innerHTML = '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 448 512"><path fill="#c8c8c8" d="M144 144v48H304V144c0-44.2-35.8-80-80-80s-80 35.8-80 80zM80 192V144C80 64.5 144.5 0 224 0s144 64.5 144 144v48h16c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V256c0-35.3 28.7-64 64-64H80z"/></svg>';
         } else {
             this.#autoScaleBtn.innerHTML = '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 576 512"><path fill="#c8c8c8" d="M352 144c0-44.2 35.8-80 80-80s80 35.8 80 80v48c0 17.7 14.3 32 32 32s32-14.3 32-32V144C576 64.5 511.5 0 432 0S288 64.5 288 144v48H64c-35.3 0-64 28.7-64 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V256c0-35.3-28.7-64-64-64H352V144z"/></svg>';
@@ -172,19 +204,21 @@ export class CanvasController {
     updateData(data) {
         this.#kline = data.kline;
         this.#depth = data.depth;
-
+        
         this.#canvas1.updateData(data.kline, data.tradesBuffer);
         this.#canvas2.updateData(data.kline, data.depth);
         this.#canvas3.updateData(data.kline);
-        this.#canvasInside.updateData(data.kline);
+        this.#canvas4.updateData(data.kline);
     }
     startNew(symbol, tickSize) {
         this.#autoScale = true;
         this.updateScaleBtn();
+
         this.#canvas1.resetData();
         this.#canvas2.resetData();
         this.#canvas3.resetData();
-        this.#canvasInside.resetData();
+        this.#canvas4.resetData();
+
         this.zoomYLevel = 0.2222;
         this.zoomXLevel = 0;
 
@@ -376,133 +410,6 @@ class Canvas1 {
     
         return minLineLength + (quantity - minQuantity) * (maxLineLength - minLineLength) / (this.maxQuantity - minQuantity);
     }  
-}
-class CanvasInside {
-    #controller;
-    #ctx;
-    #width;
-    #height;
-    #dataPoints = [];
-    #currentDataPoint;
-    #currentOI;
-    #OIDataPoints = [];
-    #lastStartTime;
-    #yMax_OI;
-    #yMin_OI;
-    #yMax_CVD;
-    #yMin_CVD;
-    #rectangleWidth = 60;
-    #minuteWidth;
-    #xZoom = 30;
-    #panXoffset = 0;
-    #cumVolumeDelta = 0;
-    constructor(controller, ctx, canvas, width, height) {
-        this.#controller = controller;
-        this.#ctx = ctx;
-        this.canvas = canvas;
-        this.#width = width;
-        this.#height = height;
-        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
-    }
-
-    panX(dx) { 
-        this.#panXoffset = this.#panXoffset + dx < 0 ? 0 : this.#panXoffset + dx;
-    }
-    zoomX(zoomLevel) {
-        const minZoom = 30;
-        const maxZoom = 10;
-        this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
-    
-        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
-    }
-    resetZoomAndPan() {
-        this.#panXoffset = 0;
-        this.#xZoom = 30;
-        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
-    }
-    resetData() {
-        this.#dataPoints = [];
-        this.#OIDataPoints = [];
-        this.#currentDataPoint = null;
-        this.#lastStartTime = null;
-        this.#yMax_OI = null;
-        this.#yMin_OI = null;
-        this.#yMax_CVD = null;
-        this.#yMin_CVD = null;
-        this.#cumVolumeDelta = 0;
-        this.#panXoffset = 0;
-    }
-    async updateData(kline) {
-        const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
-        const volumeDelta = buyVolume - (totalVolume - buyVolume);
-        this.#cumVolumeDelta += volumeDelta; 
-    
-        if (this.#lastStartTime !== startTime) {
-            if (this.#currentDataPoint) {
-                this.#dataPoints.push(this.#currentDataPoint); 
-                const OIValue = await this.fetchOI(currentSymbol);
-                this.#OIDataPoints.push(OIValue);
-        
-                if (this.#dataPoints.length > 60) { 
-                    this.#dataPoints.shift();
-                    this.#OIDataPoints.shift();
-                }
-            }
-            this.#lastStartTime = startTime;
-        }
-        this.#currentDataPoint = { startTime, endTime, volumeDelta, cumVolumeDelta: this.#cumVolumeDelta };
-    
-        this.#yMax_OI = this.#OIDataPoints.length > 0 ? Math.max(...this.#OIDataPoints.map(Number)) * 1.001 : 0;
-        this.#yMin_OI = this.#OIDataPoints.length > 0 ? Math.min(...this.#OIDataPoints.map(Number)) * 0.999 : 0;
-    
-        const cvdValues = this.#dataPoints.map(data => data.cumVolumeDelta);
-        this.#yMax_CVD = (Math.max(...cvdValues, this.#currentDataPoint.cumVolumeDelta) || 0) * 1.001;
-        this.#yMin_CVD = (Math.min(...cvdValues, this.#currentDataPoint.cumVolumeDelta) || 0) * 0.999;
-            
-        this.drawStart();
-    }
-    drawStart() {
-        this.#ctx.clearRect(0, 0, this.#width, this.#height);
-    
-        if (this.#dataPoints.length > 0) {
-            const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset; 
-            this.#dataPoints.forEach((data, index) => {
-                const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
-                this.drawDataPoint(this.#OIDataPoints[index], x + this.#panXoffset, 'OI');
-                this.drawDataPoint(data.cumVolumeDelta, x + this.#panXoffset, 'CVD');
-            });
-        }
-        this.drawDataPoint(this.#currentDataPoint.cumVolumeDelta, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset, 'CVD');
-    }      
-    drawDataPoint(data, x, type) {
-        const numberData = Number(data);
-        if (type === 'OI') {
-            const scaleFactor_OI = this.#height / (this.#yMax_OI - this.#yMin_OI);
-            const y = this.#height - ((numberData - this.#yMin_OI) * scaleFactor_OI);
-            this.drawOIPoint(x, y);
-        } else if (type === 'CVD') {
-            const scaleFactor_CVD = this.#height / (this.#yMax_CVD - this.#yMin_CVD);
-            const y = this.#height - ((numberData - this.#yMin_CVD) * scaleFactor_CVD);
-            this.drawCVDPoint(x, y);
-        }
-    }
-    drawCVDPoint(x, y) {
-        this.#ctx.beginPath();
-        this.#ctx.arc(x + this.#minuteWidth/2, y, 2, 0, 2 * Math.PI);
-        this.#ctx.fillStyle = "#EED88B";
-        this.#ctx.fill();
-    }
-    drawOIPoint(x, y) {
-        this.#ctx.beginPath();
-        this.#ctx.arc(x + this.#minuteWidth, y, 2, 0, 2 * Math.PI);
-        this.#ctx.fillStyle = "#c8c8c8";
-        this.#ctx.fill();
-    }
-    async fetchOI(symbol) {
-        const response = await fetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`);
-        const data = await response.json();
-        return data.openInterest;
-    }
 }
 class Canvas2 {
     #controller;
@@ -744,8 +651,153 @@ class Canvas3 {
         // Format the time as "HH:MM"
         const time = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
     
-        this.#ctx.font = '10px monospace';
+        this.#ctx.font = (this.#height * 0.1) + "px monospace";
         this.#ctx.fillStyle = '#c8c8c8';
         this.#ctx.fillText(time, x, this.#height - 5);
+    }
+}
+class Canvas4 {
+    #controller;
+    #ctx;
+    #width;
+    #height;
+    #dataPoints = [];
+    #currentDataPoint;
+    #currentOI;
+    #OIDataPoints = [];
+    #lastStartTime;
+    #yMax_OI;
+    #yMin_OI;
+    #yMax_CVD;
+    #yMin_CVD;
+    #rectangleWidth = 60;
+    #minuteWidth;
+    #xZoom = 30;
+    #panXoffset = 0;
+    #cumVolumeDelta = 0;
+    #oiEnabled = true;
+    #cvdEnabled = true;
+    constructor(controller, ctx, canvas, width, height) {
+        this.#controller = controller;
+        this.#ctx = ctx;
+        this.canvas = canvas;
+        this.#width = width;
+        this.#height = height;
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
+    }
+
+    panX(dx) { 
+        this.#panXoffset = this.#panXoffset + dx < 0 ? 0 : this.#panXoffset + dx;
+    }
+    zoomX(zoomLevel) {
+        const minZoom = 30;
+        const maxZoom = 10;
+        this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
+    
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
+    }
+    resetZoomAndPan() {
+        this.#panXoffset = 0;
+        this.#xZoom = 30;
+        this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
+    }
+    resetData() {
+        this.#dataPoints = [];
+        this.#OIDataPoints = [];
+        this.#currentDataPoint = null;
+        this.#lastStartTime = null;
+        this.#yMax_OI = null;
+        this.#yMin_OI = null;
+        this.#yMax_CVD = null;
+        this.#yMin_CVD = null;
+        this.#cumVolumeDelta = 0;
+        this.#panXoffset = 0;
+    }
+    toggleIndicator(indicator, state) {
+        if (indicator === 'oi') {
+            this.#oiEnabled = state
+        } else if (indicator === 'cvd') {
+            this.#cvdEnabled = state;
+        }
+    }
+    async updateData(kline) {
+        const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
+        const volumeDelta = buyVolume - (totalVolume - buyVolume);
+        this.#cumVolumeDelta += volumeDelta; 
+    
+        if (this.#lastStartTime !== startTime) {
+            if (this.#currentDataPoint) {
+                this.#dataPoints.push(this.#currentDataPoint); 
+
+                const OIValue = await this.fetchOI(currentSymbol);
+                this.#OIDataPoints.push(OIValue);
+        
+                if (this.#dataPoints.length > 60) { 
+                    this.#dataPoints.shift();
+                    this.#OIDataPoints.shift();
+                };
+            };
+            this.#lastStartTime = startTime;
+        };
+        this.#currentDataPoint = { startTime, endTime, volumeDelta, cumVolumeDelta: this.#cumVolumeDelta };
+        
+        if (this.#oiEnabled || this.#cvdEnabled) {
+            this.#yMax_OI = this.#OIDataPoints.length > 0 ? Math.max(...this.#OIDataPoints.map(Number)) * 1.001 : 0;
+            this.#yMin_OI = this.#OIDataPoints.length > 0 ? Math.min(...this.#OIDataPoints.map(Number)) * 0.999 : 0;
+        
+            const cvdValues = this.#dataPoints.map(data => data.cumVolumeDelta);
+            this.#yMax_CVD = (Math.max(...cvdValues, this.#currentDataPoint.cumVolumeDelta) || 0) * 1.001;
+            this.#yMin_CVD = (Math.min(...cvdValues, this.#currentDataPoint.cumVolumeDelta) || 0) * 0.999;
+                
+            this.drawStart();
+        };
+    }
+    drawStart() {
+        this.#ctx.clearRect(0, 0, this.#width, this.#height);
+    
+        if (this.#dataPoints.length > 0) {
+            const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset; 
+            this.#dataPoints.forEach((data, index) => {
+                const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
+                if (this.#oiEnabled) {
+                    this.drawDataPoint(this.#OIDataPoints[index], x + this.#panXoffset, 'OI');
+                };
+                if (this.#cvdEnabled) {
+                    this.drawDataPoint(data.cumVolumeDelta, x + this.#panXoffset, 'CVD');
+                };
+            });
+        }
+        if (this.#cvdEnabled) {
+            this.drawDataPoint(this.#currentDataPoint.cumVolumeDelta, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset, 'CVD');
+        }  
+    }      
+    drawDataPoint(data, x, type) {
+        const numberData = Number(data);
+        if (type === 'OI') {
+            const scaleFactor_OI = this.#height / (this.#yMax_OI - this.#yMin_OI);
+            const y = this.#height - ((numberData - this.#yMin_OI) * scaleFactor_OI);
+            this.drawOIPoint(x, y);
+        } else if (type === 'CVD') {
+            const scaleFactor_CVD = this.#height / (this.#yMax_CVD - this.#yMin_CVD);
+            const y = this.#height - ((numberData - this.#yMin_CVD) * scaleFactor_CVD);
+            this.drawCVDPoint(x, y);
+        }
+    }
+    drawCVDPoint(x, y) {
+        this.#ctx.beginPath();
+        this.#ctx.arc(x + this.#minuteWidth/2, y, 2, 0, 2 * Math.PI);
+        this.#ctx.fillStyle = "#EED88B";
+        this.#ctx.fill();
+    }
+    drawOIPoint(x, y) {
+        this.#ctx.beginPath();
+        this.#ctx.arc(x + this.#minuteWidth, y, 2, 0, 2 * Math.PI);
+        this.#ctx.fillStyle = "#c8c8c8";
+        this.#ctx.fill();
+    }
+    async fetchOI(symbol) {
+        const response = await fetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`);
+        const data = await response.json();
+        return data.openInterest;
     }
 }
