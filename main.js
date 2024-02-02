@@ -66,9 +66,6 @@ window.onload = function() {
     updateLastUpdatedInfo();
   });
 }
-window.addEventListener("resize", function() {
-  console.log("resize");
-});
 
 function showTickers() {  
   input.value = "";
@@ -196,73 +193,45 @@ function generateTable(data) {
   }
 }; 
 
-// create main canvas
-let newCanvas = document.createElement("canvas");
-newCanvas.id = "canvas1";
-newCanvas.style.position = "absolute";
-newCanvas.style.left = "0px";
-newCanvas.style.top = "0px";
+function resizeCanvasToDisplaySize(canvas) {
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
 
-document.body.appendChild(newCanvas);
-let canvas = document.querySelector("#canvas1")
-let ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth * 0.9; 
-canvas.height = window.innerHeight * 0.9;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+};
 
-// create right canvas
-let newCanvasRight = document.createElement("canvas");
-newCanvasRight.id = "canvas2";
-newCanvasRight.style.position = "absolute";
-newCanvasRight.style.left = canvas.width + "px"; 
+let canvas1 = document.querySelector("#canvas1");
+resizeCanvasToDisplaySize(canvas1);
+let ctx1 = canvas1.getContext("2d");
 
-document.body.appendChild(newCanvasRight);
-let canvasRight = document.querySelector("#canvas2")
-let ctxRight = canvasRight.getContext("2d");
-canvasRight.width = window.innerWidth * 0.1;
-canvasRight.height = window.innerHeight * 0.9;
+let canvas2 = document.querySelector("#canvas2");
+resizeCanvasToDisplaySize(canvas2);
+let ctx2 = canvas2.getContext("2d");
 
-// adjust the height of the main canvas
-let oldCanvasHeight = canvas.height;
-canvas.height = oldCanvasHeight - window.innerHeight * 0.1;
-canvasRight.height = oldCanvasHeight - window.innerHeight * 0.1;
+let canvas3 = document.querySelector("#canvas3");
+resizeCanvasToDisplaySize(canvas3);
+let ctx3 = canvas3.getContext("2d");
 
-// create inside canvas
-let newCanvasInside = document.createElement("canvas");
-newCanvasInside.id = "canvas4";
-newCanvasInside.style.position = "absolute";
-newCanvasInside.style.left = "0px";
-newCanvasInside.style.top = canvas.height + "px"; 
-
-document.body.appendChild(newCanvasInside);
-let canvasInside = document.querySelector("#canvas4")
-let ctxInside = canvasInside.getContext("2d");
-canvasInside.width = window.innerWidth * 0.9;
-canvasInside.height = window.innerHeight * 0.1; 
-
-// create bottom canvas
-let newCanvasBottom = document.createElement("canvas");
-newCanvasBottom.id = "canvas3";
-newCanvasBottom.style.position = "absolute";
-newCanvasBottom.style.left = "0px";
-newCanvasBottom.style.top = (canvas.height + canvasInside.height) + "px";
-
-document.body.appendChild(newCanvasBottom);
-let canvasBottom = document.querySelector("#canvas3")
-let ctxBottom = canvasBottom.getContext("2d");
-canvasBottom.width = canvas.width; 
-canvasBottom.height = window.innerHeight * 0.1; 
+let canvas4 = document.querySelector("#canvas4");
+resizeCanvasToDisplaySize(canvas4);
+let ctx4 = canvas4.getContext("2d");
 
 // create controller and websocket
 const webSocketService = new WebSocketService();
-const MainCanvas = new CanvasController(ctx, canvas, canvas.width, canvas.height, ctxInside, canvasInside, canvasInside.width, canvasInside.height, ctxRight, canvasRight, canvasRight.width, canvasRight.height, ctxBottom, canvasBottom, canvasBottom.width, canvasBottom.height);
+const MainCanvas = new CanvasController(ctx1, canvas1, canvas1.width, canvas1.height, ctx2, canvas2, canvas2.width, canvas2.height, ctx3, canvas3, canvas3.width, canvas3.height, ctx4, canvas4, canvas4.width, canvas4.height, );
 
 function startCanvas(symbol) {  
+  document.querySelector("#tickerInfo-name").textContent = "...";
   fetchExchangeInfo(symbol).then((tickSize) => { 
     // start websocket, send the data to the controller as it arrives
     webSocketService.createWebSocket(symbol, data => MainCanvas.updateData(data));
 
     MainCanvas.startNew(symbol, tickSize);
     document.querySelector("#ticksize-select").dispatchEvent(new Event('change'));
+    document.querySelector("#tickerInfo-name").textContent = symbol;
   });
 };
 
