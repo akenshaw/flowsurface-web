@@ -6,12 +6,10 @@
 }
 body {
   background: #212121;
-}
-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: -1;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  color: #c8c8c8;
 }
 nav {
   position: absolute;
@@ -209,4 +207,125 @@ nav {
 }
 .hidden-row {
   display: none;
+}
+#top-nav {
+  display: flex;
+  align-items: center;
+  border: 1px solid #3c3c3c;
+  font-size: 0.8rem;
+}
+#top-nav button {
+  padding: 5px;
+  margin: 5px;
+  border-radius: 5px;
+  border: none;
+  background-color: transparent;
+  color: #c8c8c8;
+  cursor: pointer;
+} 
+#top-nav button.disabled {
+  color: #99999960; 
+}
+#top-nav button.disabled svg path {
+  fill: #99999960;
+}
+#chart-settings {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 2rem;
+  gap: 2rem;
+}
+
+#indicators {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 2rem;
+  gap: 0.4rem;
+  padding-left: 6vw;
+  position: relative;
+  padding-right: 0.5vw;
+}
+
+#indicators::after {
+  content: "";
+  position: absolute;
+  right: -10px; 
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #3c3c3c; 
+}
+#ticker-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  margin: auto;
+  font-size: 1rem;
+  padding-right: 18vw;
+  color: rgb(220, 220, 220);
+}
+#themeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-right: 1rem;
+}
+#nightModeBtn svg {
+  padding-top: 0.2rem;
+}
+#timeframes button {
+  padding: 0px;
+}
+#top-nav {
+  flex: 1;
+}
+#chart-container {
+  flex: 2;
+  height: 95vh;
+  position: relative;
+  display: flex;
+}
+
+#left-wrapper, #right-wrapper {
+  position: relative;
+  height: 100%;
+}
+
+#canvas1, #canvas3, #canvas4 {
+  position: absolute;
+  width: 100%;
+}
+
+#canvas2 {
+  position: absolute;
+  width: 100%;
+}
+
+#left-wrapper {
+  width: 90%;
+}
+
+#right-wrapper {
+  width: 10%;
+}
+
+#canvas1 {
+  height: 80%;
+}
+
+#canvas4, #canvas3 {
+  height: 10%;
+  top: 80%;
+}
+
+#canvas3 {
+  top: 90%;
+}
+
+#canvas2 {
+  height: 80%;
 }
