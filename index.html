@@ -4,10 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlowSurface Test Suite</title>
-  <script type="module" crossorigin src="/flowsurface/assets/index-hZNbx9Iu.js"></script>
-  <link rel="stylesheet" crossorigin href="/flowsurface/assets/index-73t44zHB.css">
+  <script type="module" crossorigin src="/flowsurface/assets/index-b6FN1AZ_.js"></script>
+  <link rel="stylesheet" crossorigin href="/flowsurface/assets/index-7yE3jkAk.css">
 </head>
 <body>
+    <div id="top-nav">
+        <div id="chart-settings">
+            <div id="indicators">
+                <button id="cvdToggleBtn">CVD</button>
+                <button id="oiToggleBtn">Open Interest</button>
+            </div>
+            <div id="timeframes">
+                <button id="tf1m">1m</button>
+                <button class="disabled" id="tf3m" style="cursor: default;">3m</button>
+                <button class="disabled" id="tf5m" style="cursor: default;">5m</button>
+                <button class="disabled" id="tf15m" style="cursor: default;">15m</button>
+            </div>
+        </div>
+        <div id="ticker-info">
+            <span id="tickerInfo-name"></span>
+        </div>
+        <div id="themeToggle">
+            <button id="nightModeBtn"> 
+                <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512">
+                    <path fill="#c8c8c8" d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256s256-114.6 256-256S397.4 0 256 0zM256 480C132.5 480 32 379.5 32 256S132.5 32 256 32s224 100.5 224 224S379.5 480 256 480z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div id="chart-container">
+        <div id="left-wrapper">
+            <canvas id="canvas1"></canvas>
+            <canvas id="canvas4"></canvas>
+            <canvas id="canvas3"></canvas>
+        </div>
+        <div id="right-wrapper">
+            <canvas id="canvas2"></canvas>
+        </div>
+    </div>
     <nav>
         <button class="navButton" id="btn1"><svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512">
             <path fill="#c8c8c8" d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
