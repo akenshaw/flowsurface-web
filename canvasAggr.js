@@ -677,6 +677,8 @@ class Canvas4 {
     #cumVolumeDelta = 0;
     #oiEnabled = true;
     #cvdEnabled = true;
+    #scaleFactor_OI;
+    #scaleFactor_CVD;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -748,6 +750,9 @@ class Canvas4 {
             const cvdValues = this.#dataPoints.map(data => data.cumVolumeDelta);
             this.#yMax_CVD = (Math.max(...cvdValues, this.#currentDataPoint.cumVolumeDelta) || 0) * 1.001;
             this.#yMin_CVD = (Math.min(...cvdValues, this.#currentDataPoint.cumVolumeDelta) || 0) * 0.999;
+
+            this.#scaleFactor_OI = this.#height / (this.#yMax_OI - this.#yMin_OI);
+            this.#scaleFactor_CVD = this.#height / (this.#yMax_CVD - this.#yMin_CVD);
                 
             this.drawStart();
         };
@@ -760,29 +765,20 @@ class Canvas4 {
             this.#dataPoints.forEach((data, index) => {
                 const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
                 if (this.#oiEnabled) {
-                    this.drawDataPoint(this.#OIDataPoints[index], x + this.#panXoffset, 'OI');
+                    const y = this.#height - ((this.#OIDataPoints[index] - this.#yMin_OI) * this.#scaleFactor_OI);
+                    this.drawOIPoint(x + this.#panXoffset, y);
                 };
                 if (this.#cvdEnabled) {
-                    this.drawDataPoint(data.cumVolumeDelta, x + this.#panXoffset, 'CVD');
+                    const y = this.#height - ((data.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
+                    this.drawCVDPoint(x + this.#panXoffset, y);
                 };
             });
-        }
+        };
         if (this.#cvdEnabled) {
-            this.drawDataPoint(this.#currentDataPoint.cumVolumeDelta, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset, 'CVD');
-        }  
+            const y = this.#height - ((this.#currentDataPoint.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
+            this.drawCVDPoint(Math.round(this.#width - this.#minuteWidth) + this.#panXoffset, y);
+        };  
     }      
-    drawDataPoint(data, x, type) {
-        const numberData = Number(data);
-        if (type === 'OI') {
-            const scaleFactor_OI = this.#height / (this.#yMax_OI - this.#yMin_OI);
-            const y = this.#height - ((numberData - this.#yMin_OI) * scaleFactor_OI);
-            this.drawOIPoint(x, y);
-        } else if (type === 'CVD') {
-            const scaleFactor_CVD = this.#height / (this.#yMax_CVD - this.#yMin_CVD);
-            const y = this.#height - ((numberData - this.#yMin_CVD) * scaleFactor_CVD);
-            this.drawCVDPoint(x, y);
-        }
-    }
     drawCVDPoint(x, y) {
         this.#ctx.beginPath();
         this.#ctx.arc(x + this.#minuteWidth/2, y, 2, 0, 2 * Math.PI);
