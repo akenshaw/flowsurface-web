@@ -57,7 +57,7 @@ nav {
   color: #c8c8c8;
   border: 1px solid #3c3c3c;
   left: 101%; 
-  top: 3%;
+  top: 3rem;
   box-shadow: 5px 0 10px #00000050;
   height: 70vh;
 }
@@ -213,6 +213,7 @@ nav {
   align-items: center;
   border: 1px solid #3c3c3c;
   font-size: 0.8rem;
+  height: 3rem;
 }
 #top-nav button {
   padding: 5px;
@@ -233,7 +234,6 @@ nav {
   display: flex;
   flex-direction: row;
   align-items: center;
-  height: 2rem;
   gap: 2rem;
 }
 
@@ -263,7 +263,7 @@ nav {
   align-items: center;
   gap: 1rem;
   margin: auto;
-  font-size: 1rem;
+  font-size: 1.2rem;
   padding-right: 18vw;
   color: rgb(220, 220, 220);
 }
