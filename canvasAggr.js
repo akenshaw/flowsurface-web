@@ -96,7 +96,7 @@ export class CanvasController {
                         this.#canvas1.updateData(this.#kline, []);
                         this.#canvas2.updateData(this.#kline, this.#depth);
                         this.#canvas3.updateData(this.#kline);
-                        this.#canvas4.updateData(this.#kline);
+                        this.#canvas4.updateData(this.#kline, []);
 
                         this.#isAnimationFrameRequested = false;
                     });
@@ -131,7 +131,7 @@ export class CanvasController {
                     this.#canvas1.updateData(this.#kline, []);
                     this.#canvas2.updateData(this.#kline, this.#depth);
                     this.#canvas3.updateData(this.#kline);
-                    this.#canvas4.updateData(this.#kline);
+                    this.#canvas4.updateData(this.#kline, []);
 
                     this.#isAnimationFrameRequested = false;
                 });
@@ -181,7 +181,7 @@ export class CanvasController {
 
                     this.#canvas1.updateData(this.#kline, []);
                     this.#canvas3.updateData(this.#kline);
-                    this.#canvas4.updateData(this.#kline);
+                    this.#canvas4.updateData(this.#kline, []);
 
                     this.#isAnimationFrameRequested = false;
                 });
@@ -208,7 +208,7 @@ export class CanvasController {
         this.#canvas1.updateData(data.kline, data.tradesBuffer);
         this.#canvas2.updateData(data.kline, data.depth);
         this.#canvas3.updateData(data.kline);
-        this.#canvas4.updateData(data.kline);
+        this.#canvas4.updateData(data.kline, data.tradesBuffer);
     }
     startNew(symbol, tickSize) {
         this.#autoScale = true;
@@ -722,17 +722,17 @@ class Canvas4 {
             this.#cvdEnabled = state;
         }
     }
-    async updateData(kline) {
-        const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
-        const volumeDelta = buyVolume - (totalVolume - buyVolume);
-        this.#cumVolumeDelta += volumeDelta; 
+    async updateData(kline, trades) {
+        const { k: { t: startTime, T: endTime } } = kline;
+        this.#cumVolumeDelta += trades.reduce((acc, trade) => !trade.m ? acc + trade.q : acc - trade.q, 0); 
     
         if (this.#lastStartTime !== startTime) {
             if (this.#currentDataPoint) {
+            
+                this.fetchOI(currentSymbol).then(OIValue => {
+                    this.#OIDataPoints.push(OIValue);
+                });
                 this.#dataPoints.push(this.#currentDataPoint); 
-
-                const OIValue = await this.fetchOI(currentSymbol);
-                this.#OIDataPoints.push(OIValue);
         
                 if (this.#dataPoints.length > 60) { 
                     this.#dataPoints.shift();
@@ -741,7 +741,7 @@ class Canvas4 {
             };
             this.#lastStartTime = startTime;
         };
-        this.#currentDataPoint = { startTime, endTime, volumeDelta, cumVolumeDelta: this.#cumVolumeDelta };
+        this.#currentDataPoint = { startTime, endTime, cumVolumeDelta: this.#cumVolumeDelta };
         
         if (this.#oiEnabled || this.#cvdEnabled) {
             this.#yMax_OI = this.#OIDataPoints.length > 0 ? Math.max(...this.#OIDataPoints.map(Number)) * 1.001 : 0;
@@ -770,21 +770,33 @@ class Canvas4 {
                 };
                 if (this.#cvdEnabled) {
                     const y = this.#height - ((data.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
-                    this.drawCVDPoint(x + this.#panXoffset, y);
+                    if (index > 0) {
+                        const prevY = this.#height - ((this.#dataPoints[index - 1].cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
+                        this.drawCVDLine(x + this.#panXoffset, prevY, x + this.#minuteWidth + this.#panXoffset, y);
+                    };
                 };
             });
         };
         if (this.#cvdEnabled) {
             const y = this.#height - ((this.#currentDataPoint.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
-            this.drawCVDPoint(Math.round(this.#width - this.#minuteWidth) + this.#panXoffset, y);
+            const x = Math.round(this.#width - this.#minuteWidth) + this.#panXoffset
+
+            if (this.#dataPoints.length > 0) {
+                const y1 = this.#height - ((this.#dataPoints[this.#dataPoints.length - 1].cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
+                this.drawCVDLine(x, y1, x + this.#minuteWidth, y);
+            } else {
+                this.drawCVDLine(x, 0, x + this.#minuteWidth, y);
+            };                  
         };  
     }      
-    drawCVDPoint(x, y) {
+    drawCVDLine(x, y, x1, y1) {
         this.#ctx.beginPath();
-        this.#ctx.arc(x + this.#minuteWidth/2, y, 2, 0, 2 * Math.PI);
-        this.#ctx.fillStyle = "#EED88B";
-        this.#ctx.fill();
-    }
+        this.#ctx.moveTo(x, y);
+        this.#ctx.lineTo(x1, y1);
+        this.#ctx.lineWidth = 2;
+        this.#ctx.strokeStyle = "rgba(238, 216, 139, 0.3)";
+        this.#ctx.stroke();
+    } 
     drawOIPoint(x, y) {
         this.#ctx.beginPath();
         this.#ctx.arc(x + this.#minuteWidth, y, 2, 0, 2 * Math.PI);
