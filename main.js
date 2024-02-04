@@ -4,7 +4,7 @@ import { WebSocketService } from "./wsBinance.js";
 
 const buttons = ['btn1', 'btn2', 'btn3', 'btn4'];
 const menuIds = ['tickers-menu', 'menu2', 'menu3', 'settings-menu']; 
-const functions = [showTickers, autoScaleToggle, showMenu, showSettings];
+const functions = [showTickers, showMenu, showMenu, showSettings];
 
 for (let i = 0; i < buttons.length; i++) {
   const button = document.getElementById(buttons[i]);
@@ -67,6 +67,10 @@ window.onload = function() {
   });
 }
 
+function showMenu() {
+  console.log("show menu");
+};
+
 function showTickers() {  
   input.value = "";
   searchTerm = "";
@@ -77,15 +81,39 @@ function showTickers() {
   }
   tickersMenu.style.display = tickersMenu.style.display === "none" ? "block" : "none";
   updateButtonState('btn1', 'tickers-menu');
-};
-function showMenu() {
-  console.log("show menu");
-};
-function autoScaleToggle() {
+  
+  if (tickersMenu.style.display === "block") {
+    document.addEventListener('click', closeMenu);
+  } else {
+    document.removeEventListener('click', closeMenu);
+  }
 };
 function showSettings() {  
   settingsMenu.style.display = settingsMenu.style.display === "none" ? "block" : "none";
   updateButtonState('btn4', 'settings-menu');
+  
+  if (settingsMenu.style.display === "block") {
+    document.addEventListener('click', closeMenu);
+  } else {
+    document.removeEventListener('click', closeMenu);
+  }
+};
+function closeMenu(e) {
+  const btn1 = document.querySelector("#btn1")
+  const btn4 = document.querySelector("#btn4")
+  
+  if (!settingsMenu.contains(e.target) && !btn4.contains(e.target)) {
+    settingsMenu.style.display = "none";
+    updateButtonState('btn4', 'settings-menu');
+  };
+  if (!tickersMenu.contains(e.target) && !btn1.contains(e.target)) {
+    tickersMenu.style.display = "none";
+    updateButtonState('btn1', 'tickers-menu');
+  };
+  
+  if (settingsMenu.style.display === "none" && tickersMenu.style.display === "none") {
+    document.removeEventListener('click', closeMenu);
+  }
 };
 
 function updateButtonState(buttonId, menuId) {
