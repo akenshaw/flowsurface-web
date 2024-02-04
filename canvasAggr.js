@@ -248,6 +248,8 @@ class Canvas1 {
     #autoScale = true;
     #panXoffset = 0;
     #panYoffset = 0;
+    #lastKlineEnd = null;
+    #nextKlineTrades = [];
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -307,15 +309,13 @@ class Canvas1 {
         this.#autoScale = true;
         this.#panXoffset = 0;
         this.#panYoffset = 0;
+        this.#lastKlineEnd = null;
     }
     updateData(kline, aggTrades) {
-        const { k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
-
-        this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice) + this.#panYoffset;
-        this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice) + this.#panYoffset;
+        const { E: eventTime, k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
         
-        if (this.#lastOpenPrice !== openPrice) {
-            if (this.#currentDataPoint) {
+        if (eventTime > this.#lastKlineEnd || this.#lastKlineEnd === null) {
+            if (this.#currentDataPoint && this.#currentDataPoint.endTime !== endTime) {
                 this.#dataPoints.push(this.#currentDataPoint); 
                 this.#klinesTrades.push(this.#currentKlineTrades);
 
@@ -325,10 +325,32 @@ class Canvas1 {
                 }
                 this.#currentKlineTrades = [];
             }
-            this.#lastOpenPrice = openPrice;
+            this.#lastKlineEnd = endTime;
         }
         this.#currentDataPoint = { startTime, endTime, openPrice, highPrice, lowPrice, closePrice };
-        this.#currentKlineTrades.push(aggTrades);
+
+        for (let i = 0; i < aggTrades.length; i++) {
+            const trade = aggTrades[i];
+            if (trade.x >= startTime && trade.x < endTime) {
+                this.#currentKlineTrades.push(trade);
+            } else if (trade.x >= endTime) {
+                this.#nextKlineTrades.push(...aggTrades.slice(i));
+                break;
+            }
+        };
+        if (this.#nextKlineTrades.length > 0) {
+            this.#nextKlineTrades = this.#nextKlineTrades.filter(trade => {
+                if (trade.x >= startTime && trade.x < endTime) {
+                    this.#currentKlineTrades.push(trade);
+                    return false; 
+                }
+                return true; 
+            });
+        };
+
+        this.#yMin = Math.min((Number(highPrice) + Number(lowPrice)) / 2 * this.#minMultiplier, lowPrice) + this.#panYoffset;
+        this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice) + this.#panYoffset;
+
         this.drawStart();
     }    
     drawStart() {
@@ -490,9 +512,9 @@ class Canvas2 {
         const yOpen = Math.round(this.#height - (openPrice - this.#yMin) * scaleFactor);
         
         const color = yClose > yOpen ? '#C0504E' : yClose < yOpen ? '#51CDA0' : '#c8c8c8';
-        this.drawTextAt(yClose, closePrice, color);
-        this.drawTextAt(this.#height - 10, Math.round(this.#yMin), '#c8c8c8');
-        this.drawTextAt(15, Math.round(this.#yMax), '#c8c8c8');
+        this.drawTextAt(yClose, Number(closePrice), color);
+        this.drawTextAt(this.#height - 10, Number((Math.round(this.#yMin / this.bucketSize) * this.bucketSize).toFixed(4)), '#c8c8c8');
+        this.drawTextAt(15, Number((Math.round(this.#yMax / this.bucketSize) * this.bucketSize).toFixed(4)), '#c8c8c8');
 
         // orderbook
         this.maxQuantity = 20;
