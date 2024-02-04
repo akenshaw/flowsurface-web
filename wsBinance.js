@@ -19,6 +19,7 @@ export class WebSocketService {
             this.#is_first_event = true;
             this.order_book = null;
             this.#aggTradeBuffer = [];
+            this.#klineBuffer = [];
         }
         console.log('Creating websocket connection for symbol:', symbol);
         this.#lowercaseSymbol = symbol.toLowerCase();
@@ -67,11 +68,11 @@ export class WebSocketService {
 
                 isHandlingDepth = false;
 
+                callback({ kline: this.#klineBuffer, depth: this.order_book.order_book, tradesBuffer: this.#aggTradeBuffer });
+                this.#aggTradeBuffer = [];
+
             } else if (message.stream.endsWith('@kline_1m')) {
                 this.#klineBuffer = message.data
-                callback({ kline: this.#klineBuffer, depth: this.order_book.order_book, tradesBuffer: this.#aggTradeBuffer });
-
-                this.#aggTradeBuffer = [];
             }
         });    
     }
