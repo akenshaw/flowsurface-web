@@ -17,6 +17,7 @@ export class CanvasController {
     #cvdBtnActive = true;
     #oiBtnActive = true;
     #isAnimationFrameRequested = false;
+    #canvasStarted = false;
     constructor(ctx1, canvas1, width1, height1, ctx2, canvas2, width2, height2, ctx3, canvas3, width3, height3, ctx4, canvas4, width4, height4) {
         this.#canvas1 = new Canvas1(this, ctx1, canvas1, width1, height1);
         this.#canvas2 = new Canvas2(this, ctx2, canvas2, width2, height2);
@@ -85,7 +86,7 @@ export class CanvasController {
                 let dx = currentMousePos.x - this.#initialMousePos.x;
                 let dy = currentMousePos.y - this.#initialMousePos.y;
 
-                if (!this.#isAnimationFrameRequested) {
+                if (!this.#isAnimationFrameRequested && this.#canvasStarted) {
                     this.#isAnimationFrameRequested = true;
                     requestAnimationFrame(() => {
                         this.#canvas1.panXY(dx, dy);
@@ -119,7 +120,7 @@ export class CanvasController {
             this.zoomYLevel = Math.max(0, Math.min(newYZoomLevel, 1));
             this.zoomXLevel = Math.max(0, Math.min(newXZoomLevel, 1));
             
-            if (!this.#isAnimationFrameRequested) {
+            if (!this.#isAnimationFrameRequested && this.#canvasStarted) {
                 this.#isAnimationFrameRequested = true;
                 requestAnimationFrame(() => {
                     this.#canvas1.zoomY(this.zoomYLevel);
@@ -148,7 +149,7 @@ export class CanvasController {
             let newZoomLevel = this.zoomYLevel - (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
             this.zoomYLevel = Math.max(0, Math.min(newZoomLevel, 1));
             
-            if (!this.#isAnimationFrameRequested) {
+            if (!this.#isAnimationFrameRequested && this.#canvasStarted) {
                 this.#isAnimationFrameRequested = true;
                 requestAnimationFrame(() => {
                     this.#canvas1.zoomY(this.zoomYLevel);
@@ -172,7 +173,7 @@ export class CanvasController {
             let newZoomLevel = this.zoomXLevel + (event.deltaY > 0 ? -deltaZoomLevel : deltaZoomLevel);
             this.zoomXLevel = Math.max(0, Math.min(newZoomLevel, 1));
 
-            if (!this.#isAnimationFrameRequested) {
+            if (!this.#isAnimationFrameRequested && this.#canvasStarted) {
                 this.#isAnimationFrameRequested = true;
                 requestAnimationFrame(() => {
                     this.#canvas1.zoomX(this.zoomXLevel);
@@ -211,6 +212,8 @@ export class CanvasController {
         this.#canvas4.updateData(data.kline, data.tradesBuffer);
     }
     startNew(symbol, tickSize) {
+        this.#canvasStarted = false;
+
         this.#autoScale = true;
         this.updateScaleBtn();
 
@@ -224,6 +227,10 @@ export class CanvasController {
 
         currentSymbol = symbol;
         this.#tickSize = tickSize
+
+        if (!this.#canvasStarted) {
+            setTimeout(() => { this.#canvasStarted = true }, 3000);
+        };
     }
 }
 
@@ -673,9 +680,9 @@ class Canvas3 {
         // Format the time as "HH:MM"
         const time = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
     
-        this.#ctx.font = (this.#height * 0.1) + "px monospace";
+        this.#ctx.font = "12px monospace";
         this.#ctx.fillStyle = '#c8c8c8';
-        this.#ctx.fillText(time, x, this.#height - 5);
+        this.#ctx.fillText(time, x, this.#height);
     }
 }
 class Canvas4 {
