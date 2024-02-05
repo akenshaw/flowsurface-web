@@ -17,12 +17,11 @@ nav {
   left: 0;
   width: 4rem; 
   height: 100%; 
-  background: #212121;
+  background: rgba(33, 33, 33, 0.8);
   display: flex;
   flex-direction: column; 
   align-items: center;
-  box-shadow: 0 0 20px #000000;
-  opacity: 0.9;
+  box-shadow: 0 0 12px #000000;
 }
 
 .navButton {
@@ -211,7 +210,7 @@ nav {
 #top-nav {
   display: flex;
   align-items: center;
-  border: 1px solid #3c3c3c;
+  border-bottom: 1px solid #3c3c3c;
   font-size: 0.8rem;
   height: 3rem;
 }
@@ -299,6 +298,9 @@ nav {
   position: absolute;
   width: 100%;
 }
+#canvas4 { 
+  border-top: 1px solid #3c3c3c;
+}
 
 #canvas2 {
   position: absolute;
@@ -307,6 +309,7 @@ nav {
 
 #left-wrapper {
   width: 90%;
+  border-right: 1px solid #3c3c3c;
 }
 
 #right-wrapper {
@@ -328,4 +331,12 @@ nav {
 
 #canvas2 {
   height: 80%;
+}
+.loading-animation {
+  animation: spin 750ms ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
