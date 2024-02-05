@@ -60,10 +60,26 @@ function updateLastUpdatedInfo() {
   tickersUpdateInfo.textContent = "Last updated at " + getCurrentTime();
 };
 
-window.onload = function() {
+const tickersUpdateBtn = document.getElementById("tickers-update-btn");
+tickersUpdateBtn.addEventListener('click', function() {
+  tickersUpdateBtn.className = "loading-animation";
+  tickersUpdateBtn.disabled = true;
   combineDicts().then((data) => {
+    tickersUpdateBtn.className = "";
     generateTable(data);
     updateLastUpdatedInfo();
+    tickersUpdateBtn.disabled = false;
+  });
+});
+
+window.onload = function() {
+  tickersUpdateBtn.className = "loading-animation";
+  tickersUpdateBtn.disabled = true;
+  combineDicts().then((data) => {
+    tickersUpdateBtn.className = "";
+    generateTable(data);
+    updateLastUpdatedInfo();
+    tickersUpdateBtn.disabled = false;
   });
 }
 
@@ -128,16 +144,6 @@ function updateButtonState(buttonId, menuId) {
     }
   };
 };
-
-const tickersUpdateBtn = document.getElementById("tickers-update-btn");
-tickersUpdateBtn.addEventListener('click', function() {
-  tickersUpdateBtn.disabled = true;
-  combineDicts().then((data) => {
-    generateTable(data);
-    updateLastUpdatedInfo();
-    tickersUpdateBtn.disabled = false;
-  });
-});
 
 function formatLargeNumber(num) {
   if (num >= 1.0e+9) {
@@ -252,7 +258,6 @@ const webSocketService = new WebSocketService();
 const MainCanvas = new CanvasController(ctx1, canvas1, canvas1.width, canvas1.height, ctx2, canvas2, canvas2.width, canvas2.height, ctx3, canvas3, canvas3.width, canvas3.height, ctx4, canvas4, canvas4.width, canvas4.height, );
 
 function startCanvas(symbol) {  
-  document.querySelector("#tickerInfo-name").textContent = "...";
   fetchExchangeInfo(symbol).then((tickSize) => { 
     // start websocket, send the data to the controller as it arrives
     webSocketService.createWebSocket(symbol, data => MainCanvas.updateData(data));
