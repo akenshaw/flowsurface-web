@@ -1,4 +1,5 @@
 let currentSymbol;
+let histTrades = [];
 
 export class CanvasController {
     zoomYLevel = 0.2222; 
@@ -18,6 +19,8 @@ export class CanvasController {
     #oiBtnActive = true;
     #isAnimationFrameRequested = false;
     #canvasStarted = false;
+    #gettingHistKlines= false;
+    #gettingHistTrades = false;
     constructor(ctx1, canvas1, width1, height1, ctx2, canvas2, width2, height2, ctx3, canvas3, width3, height3, ctx4, canvas4, width4, height4) {
         this.#canvas1 = new Canvas1(this, ctx1, canvas1, width1, height1);
         this.#canvas2 = new Canvas2(this, ctx2, canvas2, width2, height2);
@@ -190,6 +193,48 @@ export class CanvasController {
             this.updateScaleBtn();
         });
     }
+    async fetchHistKlines(symbol, interval, startTime, endTime, limit) {
+        this.#gettingHistKlines = true;
+        try {
+            const response = await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}${startTime ? '&startTime=' + startTime : ''}${endTime ? '&endTime=' + endTime : ''}&limit=${limit}`);
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.log(error, symbol);
+            return NaN;
+        }
+    }
+    async fetchHistTrades(symbol, startTime, endTime, limit) {
+        let trades = [];
+        try {
+            const response = await fetch(`https://fapi.binance.com/fapi/v1/aggTrades=${symbol}startTime=${startTime}&endTime=${endTime}limit=${limit}`);
+            const data = await response.json();
+            trades = data.map(trade => {
+                return {
+                    x: trade.T,
+                    y: parseFloat(trade.p),
+                    q: parseFloat(trade.q),
+                    m: trade.m
+                };
+            });
+            return trades;
+        } catch (error) {
+            console.log(error, symbol);
+            return NaN;
+        }
+    }
+    async getHistKlines(startTime, endTime, limit) {
+        if (this.#gettingHistKlines) {
+            console.log('already fetching historical klines...')
+            return;
+        };
+        this.#gettingHistKlines = true;
+        this.fetchHistKlines(currentSymbol, '1m', startTime, endTime, limit).then(data => {
+            this.#canvas1.resolveHistData('klines', data);
+            this.#canvas3.resolveHistData('klines', data);
+            this.#gettingHistKlines = false;
+        });
+    }
 
     updateScaleBtn() {
         if (this.#autoScale) {
@@ -257,6 +302,7 @@ class Canvas1 {
     #panYoffset = 0;
     #lastKlineEnd = null;
     #nextKlineTrades = [];
+    #gotHistKlines = false;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -317,24 +363,33 @@ class Canvas1 {
         this.#panXoffset = 0;
         this.#panYoffset = 0;
         this.#lastKlineEnd = null;
+        this.#gotHistKlines = false;
+    }
+    resolveHistData(type, data) {
+        if (type === 'klines') {
+            this.#gotHistKlines = true;
+            data.forEach(kline => {
+                const [startTime, openPrice, highPrice, lowPrice, closePrice, , endTime] = kline;
+                const dataPoint = { startTime, openPrice, highPrice, lowPrice, closePrice, endTime };
+                this.#dataPoints.unshift(dataPoint);
+                this.#klinesTrades.unshift([]);
+            });
+        } else if (type === 'trades') {
+        };
     }
     updateData(kline, aggTrades) {
-        const { E: eventTime, k: { t: startTime, T: endTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
+        const { E: eventTime, k: { t: startTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice, T: endTime } } = kline;
         
         if (eventTime > this.#lastKlineEnd || this.#lastKlineEnd === null) {
             if (this.#currentDataPoint && this.#currentDataPoint.endTime !== endTime) {
                 this.#dataPoints.push(this.#currentDataPoint); 
                 this.#klinesTrades.push(this.#currentKlineTrades);
-
-                if (this.#dataPoints.length > 60) { 
-                    this.#dataPoints.shift();
-                    this.#klinesTrades.shift();
-                }
+                
                 this.#currentKlineTrades = [];
-            }
+            };
             this.#lastKlineEnd = endTime;
-        }
-        this.#currentDataPoint = { startTime, endTime, openPrice, highPrice, lowPrice, closePrice };
+        };
+        this.#currentDataPoint = { startTime, openPrice, highPrice, lowPrice, closePrice, endTime };
 
         for (let i = 0; i < aggTrades.length; i++) {
             const trade = aggTrades[i];
@@ -362,16 +417,26 @@ class Canvas1 {
     }    
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
+
+        const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset;
     
         if (this.#dataPoints.length > 0) {
-            const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset;     
             this.#dataPoints.forEach((data, index) => {
                 const trades = this.#klinesTrades[index];
                 const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
                 this.drawDataPoint(trades, data, x + this.#panXoffset);
             });
-        }
+        };
         this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset);
+
+        if(this.#dataPoints.length < 60 && !this.#gotHistKlines) {
+            console.log('getting historical klines...')
+            const startTime = null;
+            const limit = 60 - this.#dataPoints.length; 
+            //const endTime = this.#dataPoints[0] ? this.#dataPoints[0].startTime - 1 : null; 
+            const endTime = this.#currentDataPoint.startTime - 1;
+            this.#controller.getHistKlines(startTime, endTime, limit);
+        };
     }                      
     drawDataPoint(trades, kline, x) {
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
@@ -384,27 +449,27 @@ class Canvas1 {
         this.drawKlineAt(x, yHigh - 2);
         this.drawKlineAt(x, yLow + 2);
     
-        const flatTrades = [].concat(...trades);
-    
-        // Group trades by rounded aggTrade.y and aggTrade.m and sum the quantities
-        const groupedTrades = flatTrades.reduce((acc, aggTrade) => {
-            const roundedY = Math.round(aggTrade.y / this.bucketSize) * this.bucketSize;
-            const key = `${roundedY}-${aggTrade.m}`;
-            if (!acc[key]) {
-                acc[key] = { ...aggTrade, y: roundedY, q: 0 };
-            }
-            acc[key].q += aggTrade.q;
-            return acc;
-        }, {});
-    
-        const maxQuantity = Math.max(...Object.values(groupedTrades).map(trade => trade.q));
-        this.maxQuantity = maxQuantity > this.maxQuantity ? maxQuantity : this.maxQuantity;
-    
-        Object.values(groupedTrades).forEach((aggTrade) => {
-            const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
-            const quantityScaled = this.scaleQuantity(aggTrade.q);
-            this.drawTradesAt(x, yTradePrice, aggTrade.m, quantityScaled);
-        });
+        if (trades) {
+            const flatTrades = [].concat(...trades);
+            // Group trades by rounded aggTrade.y and aggTrade.m and sum the quantities
+            const groupedTrades = flatTrades.reduce((acc, aggTrade) => {
+                const roundedY = Math.round(aggTrade.y / this.bucketSize) * this.bucketSize;
+                const key = `${roundedY}-${aggTrade.m}`;
+                if (!acc[key]) {
+                    acc[key] = { ...aggTrade, y: roundedY, q: 0 };
+                }
+                acc[key].q += aggTrade.q;
+                return acc;
+            }, {});
+            const maxQuantity = Math.max(...Object.values(groupedTrades).map(trade => trade.q));
+            this.maxQuantity = maxQuantity > this.maxQuantity ? maxQuantity : this.maxQuantity;
+        
+            Object.values(groupedTrades).forEach((aggTrade) => {
+                const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
+                const quantityScaled = this.scaleQuantity(aggTrade.q);
+                this.drawTradesAt(x, yTradePrice, aggTrade.m, quantityScaled);
+            });
+        };
 
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + this.#minuteWidth/2, yOpen);
@@ -586,6 +651,7 @@ class Canvas3 {
     #minuteWidth;
     #xZoom = 30;
     #panXoffset = 0;
+    #gotHistKlines = false;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -616,6 +682,17 @@ class Canvas3 {
         this.#lastStartTime = null;
         this.#yMax = null;
         this.#panXoffset = 0;
+        this.#gotHistKlines = false;
+    }
+    resolveHistData(type, data) {
+        if (type === 'klines') {
+            this.#gotHistKlines = true;
+            data.forEach(kline => {
+                const [startTime, , , , , totalVolume, endTime, , , buyVolume, , ,] = kline;
+                const dataPoint = { startTime, endTime, totalVolume, buyVolume, sellVolume: totalVolume - buyVolume};
+                this.#dataPoints.unshift(dataPoint);
+            });
+        };
     }
     updateData(kline) {
         const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
@@ -626,10 +703,6 @@ class Canvas3 {
         if (this.#lastStartTime !== startTime) {
             if (this.#currentDataPoint) {
                 this.#dataPoints.push(this.#currentDataPoint); 
-    
-                if (this.#dataPoints.length > 60) { 
-                    this.#dataPoints.shift();
-                }
             }
             this.#lastStartTime = startTime;
         }
