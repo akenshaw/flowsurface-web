@@ -756,7 +756,7 @@ class Canvas3 {
     
         this.#ctx.font = "11px monospace";
         this.#ctx.fillStyle = '#c8c8c8';
-        this.#ctx.fillText(time, x, this.#height);
+        this.#ctx.fillText(time, x, this.#height - 5);
     }
 }
 class Canvas4 {
