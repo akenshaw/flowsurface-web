@@ -338,7 +338,7 @@ class Canvas1 {
     zoomX(zoomLevel) {
         const minZoom = 30;
         const maxZoom = 10;
-        this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
+        this.#xZoom = Math.round(minZoom + (maxZoom - minZoom) * zoomLevel);
     
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (this.#xZoom * 60 * 1000) * (this.#width - this.#rectangleWidth));
     }
@@ -414,20 +414,6 @@ class Canvas1 {
         this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice) + this.#panYoffset;
 
         this.drawStart();
-    }    
-    drawStart() {
-        this.#ctx.clearRect(0, 0, this.#width, this.#height);
-
-        const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset;
-    
-        if (this.#dataPoints.length > 0) {
-            this.#dataPoints.forEach((data, index) => {
-                const trades = this.#klinesTrades[index];
-                const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
-                this.drawDataPoint(trades, data, x + this.#panXoffset);
-            });
-        };
-        this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset);
 
         if(this.#dataPoints.length < 60 && !this.#gotHistKlines) {
             console.log('getting historical klines...')
@@ -437,6 +423,27 @@ class Canvas1 {
             const endTime = this.#currentDataPoint.startTime - 1;
             this.#controller.getHistKlines(startTime, endTime, limit);
         };
+    }    
+    drawStart() {
+        this.#ctx.clearRect(0, 0, this.#width, this.#height);
+    
+        const pointWidth = Math.round(this.#width - this.#minuteWidth);
+        if (this.#dataPoints.length > 0) {
+            const zoomScale = this.#xZoom * 60 * 1000;
+            const timeDifference = this.#currentDataPoint.startTime - zoomScale;
+    
+            const leftX = 0 - this.#panXoffset;
+            const rightX = this.#width - this.#panXoffset;
+    
+            this.#dataPoints.forEach((data, index) => {
+                const trades = this.#klinesTrades[index];
+                const x = Math.round((data.startTime - timeDifference) / zoomScale * pointWidth);
+                if (x >= leftX && x <= rightX) {
+                    this.drawDataPoint(trades, data, x + this.#panXoffset);
+                };
+            });
+        };
+        this.drawDataPoint(this.#currentKlineTrades, this.#currentDataPoint, pointWidth + this.#panXoffset);
     }                      
     drawDataPoint(trades, kline, x) {
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
@@ -713,15 +720,23 @@ class Canvas3 {
 
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
-    
+
+        const pointWidth = Math.round(this.#width - this.#minuteWidth);
         if (this.#dataPoints.length > 0) {
-            const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset; 
+            const zoomScale = this.#xZoom * 60 * 1000;
+            const timeDifference = this.#currentDataPoint.startTime - zoomScale;
+    
+            const leftX = 0 - this.#panXoffset;
+            const rightX = this.#width - this.#panXoffset;
+
             this.#dataPoints.forEach((data, index) => {
-                const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
-                this.drawDataPoint(data, x + this.#panXoffset);
+                const x = Math.round((data.startTime - timeDifference) / zoomScale * pointWidth);
+                if (x >= leftX && x <= rightX) {
+                    this.drawDataPoint(data, x + this.#panXoffset);
+                };
             });
         }
-        this.drawDataPoint(this.#currentDataPoint, Math.round(this.#width - this.#minuteWidth) + this.#panXoffset);
+        this.drawDataPoint(this.#currentDataPoint, pointWidth + this.#panXoffset);
     }        
     drawDataPoint(kline, x) {
         const scaleFactor = (this.#height - 20) / this.#yMax;
