@@ -590,7 +590,6 @@ class Canvas2 {
 
         // orderbook
         this.maxQuantity = 20;
-
         if (this.#depth.asks && this.#depth.bids) {
             const groupByBucketSize = (orders) => {
                 return orders.reduce((grouped, order) => {
@@ -620,22 +619,24 @@ class Canvas2 {
         
         this.#ctx.font = '10px monospace';
         this.#ctx.fillStyle = "#c8c8c8";
-        this.#ctx.fillText(Math.round(this.maxQuantity), this.#width - 40, 40);
+        let text = Math.round(this.maxQuantity);
+        let textWidth = this.#ctx.measureText(text).width;
+        this.#ctx.fillText(text, this.#width - 5 - textWidth, 20);
     }
     drawLineAt(y, color, quantity) {
-        const scaledQuantity = (quantity / this.maxQuantity) * (this.#width - 80);
+        const scaledQuantity = (quantity / this.maxQuantity) * (this.#width - 60);
     
         this.#ctx.beginPath();
-        this.#ctx.moveTo(80, y);
-        this.#ctx.lineTo(scaledQuantity + 80, y);  
+        this.#ctx.moveTo(60, y);
+        this.#ctx.lineTo(scaledQuantity + 60, y);  
         this.#ctx.strokeStyle = color;
         this.#ctx.lineWidth = 1;
         this.#ctx.stroke();
     }      
     drawTextAt(y, text, color) {
-        this.#ctx.font = '12px monospace';
+        this.#ctx.font = '11px monospace';
         this.#ctx.fillStyle = color;
-        this.#ctx.fillText(text, 10, y);
+        this.#ctx.fillText(text, 5, y);
     }
 }
 class Canvas3 {
@@ -753,7 +754,7 @@ class Canvas3 {
         // Format the time as "HH:MM"
         const time = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
     
-        this.#ctx.font = "12px monospace";
+        this.#ctx.font = "11px monospace";
         this.#ctx.fillStyle = '#c8c8c8';
         this.#ctx.fillText(time, x, this.#height);
     }
