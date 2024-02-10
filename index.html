@@ -15,8 +15,8 @@
         gtag('config', 'G-BD7RDK6FXW');
     </script>
     <link rel="icon" type="image/x-icon" href="/flowsurface/assets/logo-v2DnHxqP.svg">
-  <script type="module" crossorigin src="/flowsurface/assets/index-X09ZBIw6.js"></script>
-  <link rel="stylesheet" crossorigin href="/flowsurface/assets/index-bz7N29JA.css">
+  <script type="module" crossorigin src="/flowsurface/assets/index-olx_jUyx.js"></script>
+  <link rel="stylesheet" crossorigin href="/flowsurface/assets/index-he8wCtmK.css">
 </head>
 <body>
     <div id="top-nav">
@@ -35,10 +35,10 @@
         <div id="ticker-info">
             <span id="tickerInfo-name"></span>
         </div>
-        <div id="themeToggle">
-            <button id="nightModeBtn"> 
-                <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512">
-                    <path fill="#c8c8c8" d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256s256-114.6 256-256S397.4 0 256 0zM256 480C132.5 480 32 379.5 32 256S132.5 32 256 32s224 100.5 224 224S379.5 480 256 480z"/>
+        <div id="crosshair-select">
+            <button id="crosshairBtn" class="disabled"> 
+                <svg xmlns="http://www.w3.org/2000/svg" height="24" width="18" viewBox="0 0 448 512">
+                    <path fill="#c8c8c8" d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/>
                 </svg>
             </button>
         </div>
@@ -46,11 +46,13 @@
     <div id="chart-container">
         <div id="left-wrapper">
             <canvas id="canvas1"></canvas>
+            <canvas id="overlay-canvas1"></canvas>
             <canvas id="canvas4"></canvas>
             <canvas id="canvas3"></canvas>
         </div>
         <div id="right-wrapper">
             <canvas id="canvas2"></canvas>
+            <canvas id="overlay-canvas2"></canvas>
         </div>
     </div>
     <nav>
