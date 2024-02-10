@@ -237,25 +237,36 @@ function resizeCanvasToDisplaySize(canvas) {
   }
 };
 
-let canvas1 = document.querySelector("#canvas1");
-resizeCanvasToDisplaySize(canvas1);
-let ctx1 = canvas1.getContext("2d");
+let canvasData = [
+  { id: 'canvas1', overlayId: 'overlay-canvas1' },
+  { id: 'canvas2', overlayId: 'overlay-canvas2' },
+  { id: 'canvas3', overlayId: null },
+  { id: 'canvas4', overlayId: null },
+];
+let canvasObjects = canvasData.map(data => {
+  let canvas = document.querySelector(`#${data.id}`);
+  resizeCanvasToDisplaySize(canvas);
+  let ctx = canvas.getContext("2d");
 
-let canvas2 = document.querySelector("#canvas2");
-resizeCanvasToDisplaySize(canvas2);
-let ctx2 = canvas2.getContext("2d");
-
-let canvas3 = document.querySelector("#canvas3");
-resizeCanvasToDisplaySize(canvas3);
-let ctx3 = canvas3.getContext("2d");
-
-let canvas4 = document.querySelector("#canvas4");
-resizeCanvasToDisplaySize(canvas4);
-let ctx4 = canvas4.getContext("2d");
-
-// create controller and websocket
+  let overlayCanvas = null;
+  let overlayCtx = null;
+  if (data.overlayId) {
+    overlayCanvas = document.querySelector(`#${data.overlayId}`);
+    resizeCanvasToDisplaySize(overlayCanvas);
+    overlayCtx = overlayCanvas.getContext("2d");
+  };
+  
+  return {
+    ctx: ctx,
+    canvas: canvas,
+    width: canvas.width,
+    height: canvas.height,
+    overlayCtx: overlayCtx,
+    overlayCanvas: overlayCanvas
+  };
+});
 const webSocketService = new WebSocketService();
-const MainCanvas = new CanvasController(ctx1, canvas1, canvas1.width, canvas1.height, ctx2, canvas2, canvas2.width, canvas2.height, ctx3, canvas3, canvas3.width, canvas3.height, ctx4, canvas4, canvas4.width, canvas4.height, );
+const MainCanvas = new CanvasController(canvasObjects);
 
 function startCanvas(symbol) {  
   fetchExchangeInfo(symbol).then((tickSize) => { 
