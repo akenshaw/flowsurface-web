@@ -5,7 +5,9 @@ export class CanvasController {
     zoomYLevel = 0.2222; 
     zoomXLevel = 0;
     #canvas1;
+    #canvas1_Overlay;
     #canvas2;
+    #canvas2_Overlay;
     #canvas3;
     #canvas4;
     #tickSize;
@@ -21,67 +23,21 @@ export class CanvasController {
     #canvasStarted = false;
     #gettingHistKlines= false;
     #gettingHistTrades = false;
-    constructor(ctx1, canvas1, width1, height1, ctx2, canvas2, width2, height2, ctx3, canvas3, width3, height3, ctx4, canvas4, width4, height4) {
-        this.#canvas1 = new Canvas1(this, ctx1, canvas1, width1, height1);
-        this.#canvas2 = new Canvas2(this, ctx2, canvas2, width2, height2);
-        this.#canvas3 = new Canvas3(this, ctx3, canvas3, width3, height3);
-        this.#canvas4 = new Canvas4(this, ctx4, canvas4, width4, height4);
+    constructor(canvasObjects) {
+        this.#canvas1 = new Canvas1(this, canvasObjects[0].ctx, canvasObjects[0].canvas, canvasObjects[0].width, canvasObjects[0].height);
+        this.#canvas2 = new Canvas2(this, canvasObjects[1].ctx, canvasObjects[1].canvas, canvasObjects[1].width, canvasObjects[1].height);
+        this.#canvas3 = new Canvas3(this, canvasObjects[2].ctx, canvasObjects[2].canvas, canvasObjects[2].width, canvasObjects[2].height);
+        this.#canvas4 = new Canvas4(this, canvasObjects[3].ctx, canvasObjects[3].canvas, canvasObjects[3].width, canvasObjects[3].height);
+
+        this.#canvas1_Overlay = new OverlayCanvas1(this, canvasObjects[0].overlayCtx, canvasObjects[0].overlayCanvas, canvasObjects[0].width, canvasObjects[0].height);
+        this.#canvas2_Overlay = new OverlayCanvas2(this, canvasObjects[1].overlayCtx, canvasObjects[1].overlayCanvas, canvasObjects[1].width, canvasObjects[1].height);
   
-        // CVD and OI buttons
-        document.querySelectorAll('#top-nav button').forEach((button) => {
-            button.addEventListener('click', function(event) {
-                const clickedButton = event.target;
-                if (clickedButton.id === 'tf1m' || clickedButton.id === 'tf3m' || clickedButton.id === 'tf5m' || clickedButton.id === 'tf15m') {
-                    return;
-                }
-                clickedButton.classList.toggle('disabled');
-
-                if (clickedButton.id === 'cvdToggleBtn') {
-                    this.#cvdBtnActive = !this.#cvdBtnActive;
-                    this.#canvas4.toggleIndicator("cvd", this.#cvdBtnActive);
-                } else if (clickedButton.id === 'oiToggleBtn') {
-                    this.#oiBtnActive = !this.#oiBtnActive;
-                    this.#canvas4.toggleIndicator("oi", this.#oiBtnActive);
-                };
-
-                if (!this.#cvdBtnActive && !this.#oiBtnActive) {
-                    document.querySelector("#canvas4").style.display = "none";
-                    document.querySelector("#canvas1").style.height = "90%";
-                    document.querySelector("#canvas2").style.height = "90%";
-                    document.querySelector("#canvas3").style.height = "10%";
-                    document.querySelector("#canvas3").style.top = "90%";
-                } else {
-                    document.querySelector("#canvas4").style.display = "flex";
-                    document.querySelector("#canvas1").style.height = "80%";
-                    document.querySelector("#canvas2").style.height = "80%";
-                    document.querySelector("#canvas3").style.height = "10%";
-                    document.querySelector("#canvas3").style.top = "90%";
-                };                
-            }.bind(this)); 
-        });
-        // Auto scale 
-        this.#autoScaleBtn = document.querySelector("#btn2");
-        this.#autoScaleBtn.addEventListener('click', (event) => {
-            this.#autoScale = !this.#autoScale;
-            this.updateScaleBtn();
-        });
-        // Tick size
-        const tickSizeBtn = document.querySelector("#ticksize-select");
-        tickSizeBtn.addEventListener('change', (event) => {
-            const calculatedValue = this.#tickSize * tickSizeBtn.value;
-            console.log('new tick size:', calculatedValue);
-
-            this.#canvas1.bucketSize = calculatedValue;
-            this.#canvas1.maxQuantity = 20;
-
-            this.#canvas2.bucketSize = calculatedValue; 
-        });
         // Panning
-        this.#canvas1.canvas.addEventListener('mousedown', (event) => {
+        this.#canvas1_Overlay.canvas.addEventListener('mousedown', (event) => {
             this.#isDragging = true;
             this.#initialMousePos = { x: event.clientX, y: event.clientY };
         });
-        this.#canvas1.canvas.addEventListener('mousemove', (event) => {
+        this.#canvas1_Overlay.canvas.addEventListener('mousemove', (event) => {
             if (this.#isDragging) {
                 this.#autoScale = false;
                 
@@ -107,11 +63,11 @@ export class CanvasController {
                 }
                 this.#initialMousePos = currentMousePos;
                 this.updateScaleBtn();
-            }
+            };
         });
-        ['mouseup', 'mouseleave'].forEach(event => this.#canvas1.canvas.addEventListener(event, () => this.#isDragging = false));
+        ['mouseup', 'mouseleave'].forEach(event => this.#canvas1_Overlay.canvas.addEventListener(event, () => this.#isDragging = false));
         // Zoom Main 
-        this.#canvas1.canvas.addEventListener('wheel', (event) => {
+        this.#canvas1_Overlay.canvas.addEventListener('wheel', (event) => {
             event.preventDefault();
 
             this.#autoScale = false;
@@ -192,6 +148,73 @@ export class CanvasController {
             };  
             this.updateScaleBtn();
         });
+
+        // Crosshair 
+        this.#canvas1_Overlay.canvas.addEventListener('mousemove', (event) => {
+            const rect = this.#canvas1_Overlay.canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            this.#canvas1_Overlay.updateCrosshair(x, y);
+        });
+        this.#canvas1_Overlay.canvas.addEventListener('mouseleave', () => this.#canvas1_Overlay.clearCrosshair());
+
+        // CVD and OI buttons
+        document.querySelectorAll('#top-nav button').forEach((button) => {
+            button.addEventListener('click', function(event) {
+                const clickedButton = event.target;
+                if (clickedButton.id === 'tf1m' || clickedButton.id === 'tf3m' || clickedButton.id === 'tf5m' || clickedButton.id === 'tf15m') {
+                    return;
+                };
+                if (clickedButton.id === 'cvdToggleBtn') {
+                    clickedButton.classList.toggle('disabled');
+                    this.#cvdBtnActive = !this.#cvdBtnActive;
+                    this.#canvas4.toggleIndicator("cvd", this.#cvdBtnActive);
+                } else if (clickedButton.id === 'oiToggleBtn') {   
+                    clickedButton.classList.toggle('disabled');         
+                    this.#oiBtnActive = !this.#oiBtnActive;
+                    this.#canvas4.toggleIndicator("oi", this.#oiBtnActive);
+                };
+
+                if (!this.#cvdBtnActive && !this.#oiBtnActive) {
+                    document.querySelector("#canvas4").style.display = "none";
+                    document.querySelector("#canvas1").style.height = "90%";
+                    document.querySelector("#canvas2").style.height = "90%";
+                    document.querySelector("#canvas3").style.height = "10%";
+                    document.querySelector("#canvas3").style.top = "90%";
+                } else {
+                    document.querySelector("#canvas4").style.display = "flex";
+                    document.querySelector("#canvas1").style.height = "80%";
+                    document.querySelector("#canvas2").style.height = "80%";
+                    document.querySelector("#canvas3").style.height = "10%";
+                    document.querySelector("#canvas3").style.top = "90%";
+                };                
+            }.bind(this)); 
+        });
+        // Crosshair Selection
+        document.querySelector("#crosshairBtn").addEventListener('click', (event) => {
+            document.querySelector("#crosshairBtn").classList.toggle('disabled');
+            this.#canvas1_Overlay.crosshairSelected = !this.#canvas1_Overlay.crosshairSelected;
+        });
+
+        // Auto scale 
+        this.#autoScaleBtn = document.querySelector("#btn2");
+        this.#autoScaleBtn.addEventListener('click', (event) => {
+            this.#autoScale = !this.#autoScale;
+            this.updateScaleBtn();
+        });
+        // Tick size
+        const tickSizeBtn = document.querySelector("#ticksize-select");
+        tickSizeBtn.addEventListener('change', (event) => {
+            const calculatedValue = this.#tickSize * tickSizeBtn.value;
+            console.log('new tick size:', calculatedValue);
+
+            this.#canvas1.bucketSize = calculatedValue;
+            this.#canvas1_Overlay.bucketSize = calculatedValue;
+            this.#canvas1.maxQuantity = 20;
+
+            this.#canvas2.bucketSize = calculatedValue; 
+            this.#canvas2_Overlay.bucketSize = calculatedValue;
+        });
     }
     async fetchHistKlines(symbol, interval, startTime, endTime, limit) {
         this.#gettingHistKlines = true;
@@ -199,25 +222,6 @@ export class CanvasController {
             const response = await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}${startTime ? '&startTime=' + startTime : ''}${endTime ? '&endTime=' + endTime : ''}&limit=${limit}`);
             const data = await response.json();
             return data;
-        } catch (error) {
-            console.log(error, symbol);
-            return NaN;
-        }
-    }
-    async fetchHistTrades(symbol, startTime, endTime, limit) {
-        let trades = [];
-        try {
-            const response = await fetch(`https://fapi.binance.com/fapi/v1/aggTrades=${symbol}startTime=${startTime}&endTime=${endTime}limit=${limit}`);
-            const data = await response.json();
-            trades = data.map(trade => {
-                return {
-                    x: trade.T,
-                    y: parseFloat(trade.p),
-                    q: parseFloat(trade.q),
-                    m: trade.m
-                };
-            });
-            return trades;
         } catch (error) {
             console.log(error, symbol);
             return NaN;
@@ -235,7 +239,24 @@ export class CanvasController {
             this.#gettingHistKlines = false;
         });
     }
-
+    async fetchHistTrades(symbol, startTime, endTime, limit) {
+        try {
+            const url = `https://fapi.binance.com/fapi/v1/aggTrades?symbol=${symbol}${startTime ? '&startTime=' + startTime : ''}${endTime ? '&endTime=' + endTime : ''}${limit ? '&limit=' + limit : ''}`;
+            const response = await fetch(url);
+            const data = await response.json();    
+            return data.map(trade => {
+                return {
+                    x: trade.T,
+                    y: parseFloat(trade.p),
+                    q: parseFloat(trade.q),
+                    m: trade.m
+                };
+            });
+        } catch (error) {
+            console.log(error, url);
+            return NaN;
+        }
+    }        
     updateScaleBtn() {
         if (this.#autoScale) {
             this.#canvas1.resetZoomAndPan();
@@ -277,6 +298,10 @@ export class CanvasController {
             setTimeout(() => { this.#canvasStarted = true }, 3000);
         };
     }
+    drawScale(yMin, yMax) {
+        //this.#canvas1_Overlay.drawScale();
+        this.#canvas2_Overlay.drawStart(yMin, yMax);
+    }
 }
 
 class Canvas1 {
@@ -303,6 +328,8 @@ class Canvas1 {
     #lastKlineEnd = null;
     #nextKlineTrades = [];
     #gotHistKlines = false;
+    #gotHistTrades = false;
+    #gettingHistTrades = false;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -364,6 +391,8 @@ class Canvas1 {
         this.#panYoffset = 0;
         this.#lastKlineEnd = null;
         this.#gotHistKlines = false;
+        this.#gotHistTrades = false;
+        this.#gettingHistTrades = false;
     }
     resolveHistData(type, data) {
         if (type === 'klines') {
@@ -377,6 +406,42 @@ class Canvas1 {
         } else if (type === 'trades') {
         };
     }
+    async getHistTrades(symbol) {
+        if (this.#gettingHistTrades) {
+            console.log('already fetching historical trades...')
+            return;
+        };
+        this.#gettingHistTrades = true;
+        for (let i = 0; i < this.#dataPoints.length; i++) {
+            const kline = this.#dataPoints[i];
+            let startTime = kline.startTime;
+            const endTime = kline.endTime;
+            let trades = [];
+            let lastTradeTime = 0;
+            console.log('getting historical trades:', i + 1, 'of', this.#dataPoints.length, 'klines...')
+            do {
+                if (symbol != currentSymbol) {
+                    console.log('stopped fetching historical trades for', symbol);
+                    this.#gettingHistTrades = false;
+                    return; 
+                };
+                try {
+                    const fetchedTrades = await this.#controller.fetchHistTrades(currentSymbol, startTime, endTime, 1000);
+                    trades = trades.concat(fetchedTrades);
+                    lastTradeTime = fetchedTrades[fetchedTrades.length - 1].x;
+                    startTime = lastTradeTime + 1;
+                    console.log('fetched', fetchedTrades.length, 'trades');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.log(error, startTime, endTime);
+                    break;
+                };
+            } while (lastTradeTime < endTime);
+            this.#klinesTrades[i] = trades;
+        }
+        this.#gettingHistTrades = false;
+        this.#gotHistTrades = true;
+    }        
     updateData(kline, aggTrades) {
         const { E: eventTime, k: { t: startTime, o: openPrice, h: highPrice, l: lowPrice, c: closePrice, T: endTime } } = kline;
         
@@ -423,6 +488,10 @@ class Canvas1 {
             const endTime = this.#currentDataPoint.startTime - 1;
             this.#controller.getHistKlines(startTime, endTime, limit);
         };
+
+        //if (this.#gotHistKlines && !this.#gettingHistTrades && !this.#gotHistTrades) {
+        //    this.getHistTrades(currentSymbol);
+        //};
     }    
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
@@ -579,21 +648,17 @@ class Canvas2 {
         this.#yMax = Math.max((Number(highPrice) + Number(lowPrice)) / 2 * this.#maxMultiplier, highPrice) + this.#panYoffset;
 
         this.drawStart();
+        this.#controller.drawScale(this.#yMin, this.#yMax);
     }
 
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
-    
+
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
         const { closePrice, openPrice } = this.#kline;
         
         const yClose = Math.round(this.#height - (closePrice - this.#yMin) * scaleFactor);
         const yOpen = Math.round(this.#height - (openPrice - this.#yMin) * scaleFactor);
-        
-        const color = yClose > yOpen ? '#C0504E' : yClose < yOpen ? '#51CDA0' : '#c8c8c8';
-        this.drawTextAt(yClose, Number(closePrice), color);
-        this.drawTextAt(this.#height - 10, Number((Math.round(this.#yMin / this.bucketSize) * this.bucketSize).toFixed(4)), '#c8c8c8');
-        this.drawTextAt(15, Number((Math.round(this.#yMax / this.bucketSize) * this.bucketSize).toFixed(4)), '#c8c8c8');
 
         // orderbook
         this.maxQuantity = 20;
@@ -623,12 +688,14 @@ class Canvas2 {
                 this.drawLineAt(y, '#51CDA0', quantity);
             });
         };
-        
         this.#ctx.font = '10px monospace';
         this.#ctx.fillStyle = "#c8c8c8";
         let text = Math.round(this.maxQuantity);
         let textWidth = this.#ctx.measureText(text).width;
         this.#ctx.fillText(text, this.#width - 5 - textWidth, 20);
+
+        const color = yClose > yOpen ? '#C0504E' : yClose < yOpen ? '#51CDA0' : '#c8c8c8';
+        this.drawTextWithBackground(yClose, Number(closePrice), "#212121", color);
     }
     drawLineAt(y, color, quantity) {
         const scaledQuantity = (quantity / this.maxQuantity) * (this.#width - 60);
@@ -640,8 +707,12 @@ class Canvas2 {
         this.#ctx.lineWidth = 1;
         this.#ctx.stroke();
     }      
-    drawTextAt(y, text, color) {
+    drawTextWithBackground(y, text, color, bg_color) {
         this.#ctx.font = '11px monospace';
+        const textWidth = this.#ctx.measureText(text).width;
+
+        this.#ctx.fillStyle = bg_color;
+        this.#ctx.fillRect(5 - 2, y - 10, textWidth + 4, 12);
         this.#ctx.fillStyle = color;
         this.#ctx.fillText(text, 5, y);
     }
@@ -925,5 +996,83 @@ class Canvas4 {
         const response = await fetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`);
         const data = await response.json();
         return data.openInterest;
+    }
+}
+class OverlayCanvas1 {
+    #controller;
+    #ctx;
+    #width;
+    #height;
+    #yMin;
+    #yMax;
+    crosshairSelected = false;
+    constructor(controller, ctx, canvas, width, height) {
+        this.#controller = controller;
+        this.#ctx = ctx;
+        this.canvas = canvas;
+        this.#width = width;
+        this.#height = height;
+    }
+    updateCrosshair(x, y) {
+        if (this.crosshairSelected) {
+            this.#ctx.clearRect(0, 0, this.#width, this.#height);
+            this.drawCrosshair(x, y);
+        };
+    }
+    drawCrosshair(x, y) {
+        this.#ctx.beginPath();
+        this.#ctx.moveTo(x, 0);
+        this.#ctx.lineTo(x, this.#height);
+        this.#ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
+        this.#ctx.stroke();
+    
+        this.#ctx.beginPath();
+        this.#ctx.moveTo(0, y);
+        this.#ctx.lineTo(this.#width, y);
+        this.#ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
+        this.#ctx.stroke();
+    }
+    clearCrosshair() {
+        this.#ctx.clearRect(0, 0, this.#width, this.#height);
+    }
+}
+class OverlayCanvas2 {
+    #controller;
+    #ctx;
+    #width;
+    #height;
+    bucketSize;
+    #yMin;
+    #yMax;
+    constructor(controller, ctx, canvas, width, height) {
+        this.#controller = controller;
+        this.#ctx = ctx;
+        this.canvas = canvas;
+        this.#width = width;
+        this.#height = height;
+    }
+
+    drawStart(yMin, yMax) {
+        if (yMin === this.#yMin && yMax === this.#yMax) return;
+        
+        this.#ctx.clearRect(0, 0, this.#width, this.#height);
+
+        this.#yMin = yMin;
+        this.#yMax = yMax;
+
+        const scaleFactor = this.#height / (yMax - yMin);
+        const scalePoints = 20;
+        const step = (yMax - yMin) / scalePoints;
+        for (let i = 0; i <= scalePoints; i++) {
+            let yValue = yMin + i * step;
+            yValue = Number((Math.round(yValue / this.bucketSize) * this.bucketSize).toFixed(4));
+            const y = Math.round(this.#height - (yValue - yMin) * scaleFactor);
+            this.drawTextAt(y, Number(yValue.toFixed(4)), '#c8c8c8');
+        };
+    }
+    drawTextAt(y, text, color) {
+        this.#ctx.font = '11px monospace';
+        this.#ctx.fillStyle = color;
+        this.#ctx.fillText(text, 5, y);
     }
 }
