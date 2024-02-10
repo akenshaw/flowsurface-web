@@ -489,9 +489,9 @@ class Canvas1 {
             this.#controller.getHistKlines(startTime, endTime, limit);
         };
 
-        //if (this.#gotHistKlines && !this.#gettingHistTrades && !this.#gotHistTrades) {
-        //    this.getHistTrades(currentSymbol);
-        //};
+        if (this.#gotHistKlines && !this.#gettingHistTrades && !this.#gotHistTrades) {
+            this.getHistTrades(currentSymbol);
+        };
     }    
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
@@ -550,8 +550,13 @@ class Canvas1 {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + this.#minuteWidth/2, yOpen);
         this.#ctx.lineTo(x + this.#minuteWidth/2, yClose);
-        this.#ctx.strokeStyle = yClose < yOpen ? '#9BE6D1' : '#E6A1A0';
+        this.#ctx.shadowColor = yClose < yOpen ? 'rgba(155, 230, 209, 0.5)' : 'rgba(230, 161, 160, 0.5)'; 
+        this.#ctx.shadowBlur = 5; 
+        this.#ctx.strokeStyle = yClose < yOpen ? 'rgba(155, 230, 209, 0.5)' : 'rgba(230, 161, 160, 0.5)';
         this.#ctx.stroke();
+        //reset shadow
+        this.#ctx.shadowColor = 'transparent';
+        this.#ctx.shadowBlur = 0;
     }     
     drawKlineAt(x, y) {
         this.#ctx.beginPath();
@@ -694,8 +699,14 @@ class Canvas2 {
         let textWidth = this.#ctx.measureText(text).width;
         this.#ctx.fillText(text, this.#width - 5 - textWidth, 20);
 
+        const colors = {
+            '#C0504E': 'rgba(192, 80, 78, 0.5)',
+            '#51CDA0': 'rgba(81, 205, 160, 0.5)',
+            '#c8c8c8': 'rgba(200, 200, 200, 0.5)'
+        };
         const color = yClose > yOpen ? '#C0504E' : yClose < yOpen ? '#51CDA0' : '#c8c8c8';
-        this.drawTextWithBackground(yClose, Number(closePrice), "#212121", color);
+        const shadowColor = colors[color];
+        this.drawTextWithBackground(yClose, Number(closePrice), "#212121", color, shadowColor);
     }
     drawLineAt(y, color, quantity) {
         const scaledQuantity = (quantity / this.maxQuantity) * (this.#width - 60);
@@ -707,12 +718,17 @@ class Canvas2 {
         this.#ctx.lineWidth = 1;
         this.#ctx.stroke();
     }      
-    drawTextWithBackground(y, text, color, bg_color) {
+    drawTextWithBackground(y, text, color, bg_color, shadowColor) {
         this.#ctx.font = '11px monospace';
         const textWidth = this.#ctx.measureText(text).width;
 
+        this.#ctx.shadowColor = shadowColor; 
+        this.#ctx.shadowBlur = 5;
         this.#ctx.fillStyle = bg_color;
         this.#ctx.fillRect(5 - 2, y - 10, textWidth + 4, 12);
+        this.#ctx.shadowColor = 'transparent';
+        this.#ctx.shadowBlur = 0;
+
         this.#ctx.fillStyle = color;
         this.#ctx.fillText(text, 5, y);
     }
@@ -824,16 +840,21 @@ class Canvas3 {
 
         this.drawTimeLabel(x, kline.startTime);
     
-        this.drawKlineAt(x + this.#minuteWidth/2 + this.#minuteWidth/8, yBuyVolume, '#51CDA0');
-        this.drawKlineAt(x + this.#minuteWidth/2 - this.#minuteWidth/8, ySellVolume, '#C0504E');
+        this.drawKlineAt(x + this.#minuteWidth/2 + this.#minuteWidth/8, yBuyVolume, '#51CDA0', "rgba(81, 205, 160, 0.4)");
+        this.drawKlineAt(x + this.#minuteWidth/2 - this.#minuteWidth/8, ySellVolume, '#C0504E', "rgba(192, 80, 77, 0.4)");
     }
-    drawKlineAt(x, y, color) {
+    drawKlineAt(x, y, color, shadowColor) {
         this.#ctx.beginPath();
         this.#ctx.moveTo(x, this.#height - 20);
         this.#ctx.lineTo(x, y);
         this.#ctx.strokeStyle = color;
         this.#ctx.lineWidth = this.#minuteWidth/6;
+        this.#ctx.shadowColor = shadowColor; 
+        this.#ctx.shadowBlur = 3; 
         this.#ctx.stroke();
+        //reset shadow
+        this.#ctx.shadowColor = 'transparent';
+        this.#ctx.shadowBlur = 0;
     }     
     drawTimeLabel(x, startTime) {
         const date = new Date(startTime);
