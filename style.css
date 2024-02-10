@@ -24,6 +24,7 @@ nav {
   flex-direction: column; 
   align-items: center;
   box-shadow: 0 0 12px #000000;
+  z-index: 2;
 }
 
 .navButton {
@@ -255,21 +256,21 @@ nav {
   display: flex;
   flex-direction: row;
   align-items: center;
+  position: absolute;
   gap: 1rem;
-  margin: auto;
+  right: 50%;
+  left: 50%;
   font-size: 1.2rem;
   padding-right: 18vw;
   color: rgb(220, 220, 220);
 }
-#themeToggle {
+#crosshair-select {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  margin-right: 1rem;
-}
-#nightModeBtn svg {
-  padding-top: 0.15rem;
+  left: 85%;
+  position: absolute;
+  font-size: 1.2rem;
 }
 #timeframes button {
   padding: 0px;
@@ -318,6 +319,15 @@ nav {
 #canvas1 {
   height: 80%;
 }
+#overlay-canvas1 {
+  position: absolute;
+  width: 100%;
+  height: 80%;
+  z-index: 1;
+} 
+#overlay-canvas1:active {
+  cursor: grabbing;
+}
 
 #canvas4, #canvas3 {
   height: 10%;
@@ -330,6 +340,12 @@ nav {
 
 #canvas2 {
   height: 80%;
+}
+#overlay-canvas2 {
+  position: absolute;
+  width: 100%;
+  height: 80%;
+  z-index: -1;
 }
 .loading-animation {
   animation: spin 750ms ease-in-out infinite;
