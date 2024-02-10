@@ -257,18 +257,15 @@ nav {
   flex-direction: row;
   align-items: center;
   position: absolute;
-  gap: 1rem;
-  right: 50%;
-  left: 50%;
+  left: 49%;
   font-size: 1.2rem;
-  padding-right: 18vw;
   color: rgb(220, 220, 220);
 }
 #crosshair-select {
   display: flex;
   flex-direction: row;
   align-items: center;
-  left: 85%;
+  left: 88%;
   position: absolute;
   font-size: 1.2rem;
 }
