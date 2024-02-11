@@ -34,8 +34,8 @@ input.addEventListener('keyup', function() {
   }
 });
 
-function canvasStarter(symbol) {
-  startCanvas(symbol);
+function canvasStarter(symbol, initialPrice) {
+  startCanvas(symbol, initialPrice);
   console.log("canvas was started with symbol: " + symbol);
 
   input.value = "";
@@ -223,7 +223,7 @@ function generateTable(data) {
     } else {
       row.cells[3].style.color = "rgba(81, 246, 160, " + fndng_color_a*1.5 + ")";
     };
-    row.addEventListener('click', function() { canvasStarter(symbol) });
+    row.addEventListener('click', function() { canvasStarter(symbol, symbolData.mark_price) });
   }
 }; 
 
@@ -268,12 +268,12 @@ let canvasObjects = canvasData.map(data => {
 const webSocketService = new WebSocketService();
 const MainCanvas = new CanvasController(canvasObjects);
 
-function startCanvas(symbol) {  
-  fetchExchangeInfo(symbol).then((tickSize) => { 
+function startCanvas(symbol, initialPrice) {  
+  fetchExchangeInfo(symbol).then(([tickSize, minQty]) => { 
     // start websocket, send the data to the controller as it arrives
     webSocketService.createWebSocket(symbol, data => MainCanvas.updateData(data));
 
-    MainCanvas.startNew(symbol, tickSize);
+    MainCanvas.startNew(symbol, tickSize, minQty, initialPrice);
     document.querySelector("#ticksize-select").dispatchEvent(new Event('change'));
     document.querySelector("#tickerInfo-name").textContent = symbol;
   });
@@ -285,8 +285,8 @@ async function fetchExchangeInfo(symbol) {
 
   let symbol_info = data['symbols'].find(x => x.symbol === symbol);
   if (symbol_info) {
-      return symbol_info['filters'][0]['tickSize'];
+    return [symbol_info['filters'][0]['tickSize'], symbol_info['filters'][2]['minQty']];
   } else {
-      return null;
+    return null;
   }
 };
