@@ -397,7 +397,6 @@ class Canvas1 {
         this.#gotHistTrades = false;
         this.#gettingHistTrades = false;
         this.#minQty = this.#controller.minQty;
-        this.maxQty = 0;
     }
     resolveHistData(type, data) {
         if (type === 'klines') {
@@ -417,6 +416,28 @@ class Canvas1 {
             return;
         };
         this.#gettingHistTrades = true;
+
+        // get current kline first
+        let startTime = this.#currentDataPoint.startTime;
+        const endTime = Date.now();
+        let trades = [];
+        let lastTradeTime = 0;
+        console.log('getting current trades...')
+        do {
+            try {
+                const fetchedTrades = await this.#controller.fetchHistTrades(symbol, startTime, endTime, 1000);
+                trades = trades.concat(fetchedTrades);
+                lastTradeTime = fetchedTrades[fetchedTrades.length - 1].x;
+                startTime = lastTradeTime + 1;
+                console.log('fetched', fetchedTrades.length, 'trades');
+            } catch (error) {
+                console.log(error, startTime, null);
+                break;
+            };
+        } while (lastTradeTime < endTime);  
+        this.#currentKlineTrades = trades;
+    
+        // get historical klines after
         for (let i = 0; i < this.#dataPoints.length; i++) {
             const kline = this.#dataPoints[i];
             let startTime = kline.startTime;
@@ -501,17 +522,18 @@ class Canvas1 {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
     
         const pointWidth = Math.round(this.#width - this.#minuteWidth);
+        const zoomScale = this.#xZoom * 60 * 1000;
+        const timeDifference = this.#currentDataPoint.startTime - zoomScale;
+
+        const leftX = 0 - this.#panXoffset;
+        const rightX = this.#width - this.#panXoffset;
+
         if (this.#dataPoints.length > 0) {
-            const zoomScale = this.#xZoom * 60 * 1000;
-            const timeDifference = this.#currentDataPoint.startTime - zoomScale;
-    
-            const leftX = 0 - this.#panXoffset;
-            const rightX = this.#width - this.#panXoffset;
-    
+            this.maxQty = 0;
             this.#dataPoints.forEach((data, index) => {
-                const trades = this.#klinesTrades[index];
                 const x = Math.round((data.startTime - timeDifference) / zoomScale * pointWidth);
                 if (x >= leftX && x <= rightX) {
+                    const trades = this.#klinesTrades[index];
                     this.drawDataPoint(trades, data, x + this.#panXoffset);
                 };
             });
@@ -532,8 +554,8 @@ class Canvas1 {
                 acc[key].q += aggTrade.q;
                 return acc;
             }, {});
-            const maxQuantity = Math.max(...Object.values(groupedTrades).map(trade => trade.q));
-            this.maxQty = maxQuantity > this.maxQty ? maxQuantity : this.maxQty;
+            const maxQtyKline = Math.max(...Object.values(groupedTrades).map(trade => trade.q));
+            this.maxQty = maxQtyKline > this.maxQty ? maxQtyKline : this.maxQty;
         
             Object.values(groupedTrades).forEach((aggTrade) => {
                 const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
@@ -792,10 +814,9 @@ class Canvas3 {
     }
     updateData(kline) {
         const { k: { t: startTime, T: endTime, v: totalVolume, V: buyVolume } } = kline;
-    
+
         const sellVolume = totalVolume - buyVolume;
-        this.#yMax = Math.round(this.#dataPoints.reduce((max, data) => Math.max(max, data.buyVolume, data.sellVolume), Math.max(buyVolume, sellVolume)));
-    
+
         if (this.#lastStartTime !== startTime) {
             if (this.#currentDataPoint) {
                 this.#dataPoints.push(this.#currentDataPoint); 
@@ -810,22 +831,27 @@ class Canvas3 {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
 
         const pointWidth = Math.round(this.#width - this.#minuteWidth);
-        if (this.#dataPoints.length > 0) {
-            const zoomScale = this.#xZoom * 60 * 1000;
-            const timeDifference = this.#currentDataPoint.startTime - zoomScale;
-    
-            const leftX = 0 - this.#panXoffset;
-            const rightX = this.#width - this.#panXoffset;
 
-            this.#dataPoints.forEach((data, index) => {
+        const zoomScale = this.#xZoom * 60 * 1000;
+        const timeDifference = this.#currentDataPoint.startTime - zoomScale;
+
+        const leftX = 0 - this.#panXoffset;
+        const rightX = this.#width - this.#panXoffset;
+
+        const visibleDataPoints = this.#dataPoints.filter((data) => {
+            const x = Math.round((data.startTime - timeDifference) / zoomScale * pointWidth);
+            return x >= leftX && x <= rightX;
+        });
+        this.#yMax = visibleDataPoints.reduce((max, data) => Math.max(max, data.buyVolume, data.sellVolume), 0);
+
+        if (visibleDataPoints.length > 0) {
+            visibleDataPoints.forEach((data) => {
                 const x = Math.round((data.startTime - timeDifference) / zoomScale * pointWidth);
-                if (x >= leftX && x <= rightX) {
-                    this.drawDataPoint(data, x + this.#panXoffset);
-                };
+                this.drawDataPoint(data, x + this.#panXoffset);
             });
-        }
+        };
         this.drawDataPoint(this.#currentDataPoint, pointWidth + this.#panXoffset);
-    }        
+    }       
     drawDataPoint(kline, x) {
         const scaleFactor = (this.#height - 20) / this.#yMax;
     
@@ -970,34 +996,44 @@ class Canvas4 {
     }
     drawStart() {
         this.#ctx.clearRect(0, 0, this.#width, this.#height);
+
+        const pointWidth = Math.round(this.#width - this.#minuteWidth);
+
+        const zoomScale = this.#xZoom * 60 * 1000;
+        const timeDifference = this.#currentDataPoint.startTime - zoomScale;
+        
+        const leftX = 0 - this.#panXoffset;
+        const rightX = this.#width - this.#panXoffset;
     
-        if (this.#dataPoints.length > 0) {
-            const leftmostTime = (this.#currentDataPoint.startTime - this.#xZoom * 60 * 1000) + this.#panXoffset; 
+        if (this.#dataPoints.length > 0) {        
             this.#dataPoints.forEach((data, index) => {
-                const x = Math.round((data.startTime - leftmostTime) / (this.#xZoom * 60 * 1000) * (this.#width - this.#minuteWidth));
-                if (this.#oiEnabled) {
-                    const y = this.#height - ((this.#OIDataPoints[index] - this.#yMin_OI) * this.#scaleFactor_OI);
-                    this.drawOIPoint(x + this.#panXoffset, y);
-                };
-                if (this.#cvdEnabled) {
-                    const y = this.#height - ((data.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
-                    if (index > 0) {
-                        const prevY = this.#height - ((this.#dataPoints[index - 1].cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
-                        this.drawCVDLine(x + this.#panXoffset, prevY, x + this.#minuteWidth + this.#panXoffset, y);
+                const x = Math.round((data.startTime - timeDifference) / zoomScale * pointWidth);
+                if (x >= leftX && x <= rightX) {
+                    if (this.#oiEnabled) {
+                        const y = this.#height - ((this.#OIDataPoints[index] - this.#yMin_OI) * this.#scaleFactor_OI);
+                        this.drawOIPoint(x + this.#panXoffset, y);
+                    };
+                    if (this.#cvdEnabled) {
+                        const y = this.#height - ((data.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
+                        if (index > 0) {
+                            const prevY = this.#height - ((this.#dataPoints[index - 1].cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
+                            this.drawCVDLine(x + this.#panXoffset, prevY, x + this.#minuteWidth + this.#panXoffset, y);
+                        };
                     };
                 };
             });
         };
         if (this.#cvdEnabled) {
-            const y = this.#height - ((this.#currentDataPoint.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
-            const x = Math.round(this.#width - this.#minuteWidth) + this.#panXoffset
-
-            if (this.#dataPoints.length > 0) {
-                const y1 = this.#height - ((this.#dataPoints[this.#dataPoints.length - 1].cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
-                this.drawCVDLine(x, y1, x + this.#minuteWidth, y);
-            } else {
-                this.drawCVDLine(x, 0, x + this.#minuteWidth, y);
-            };                  
+            const x = pointWidth + this.#panXoffset
+            if (x >= leftX && x <= rightX) {
+                const y = this.#height - ((this.#currentDataPoint.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
+                if (this.#dataPoints.length > 0) {
+                    const y1 = this.#height - ((this.#dataPoints[this.#dataPoints.length - 1].cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD);
+                    this.drawCVDLine(x, y1, x + this.#minuteWidth, y);
+                } else {
+                    this.drawCVDLine(x, 0, x + this.#minuteWidth, y);
+                };     
+            };             
         };  
     }      
     drawCVDLine(x, y, x1, y1) {
