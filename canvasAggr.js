@@ -11,6 +11,8 @@ export class CanvasController {
     #canvas3;
     #canvas4;
     #tickSize;
+    minQty;
+    initialPrice;
     #kline;
     #depth;
     #isDragging = false;
@@ -210,7 +212,7 @@ export class CanvasController {
 
             this.#canvas1.bucketSize = calculatedValue;
             this.#canvas1_Overlay.bucketSize = calculatedValue;
-            this.#canvas1.maxQuantity = 20;
+            this.#canvas1.maxQty = 0;
 
             this.#canvas2.bucketSize = calculatedValue; 
             this.#canvas2_Overlay.bucketSize = calculatedValue;
@@ -277,8 +279,15 @@ export class CanvasController {
         this.#canvas3.updateData(data.kline);
         this.#canvas4.updateData(data.kline, data.tradesBuffer);
     }
-    startNew(symbol, tickSize) {
+    startNew(symbol, tickSize, minQty, initialPrice) {
         this.#canvasStarted = false;
+
+        currentSymbol = symbol;
+        this.#tickSize = tickSize
+        this.minQty = minQty;
+        this.initialPrice = initialPrice;
+        this.zoomYLevel = 0.2222;
+        this.zoomXLevel = 0;
 
         this.#autoScale = true;
         this.updateScaleBtn();
@@ -287,12 +296,6 @@ export class CanvasController {
         this.#canvas2.resetData();
         this.#canvas3.resetData();
         this.#canvas4.resetData();
-
-        this.zoomYLevel = 0.2222;
-        this.zoomXLevel = 0;
-
-        currentSymbol = symbol;
-        this.#tickSize = tickSize
 
         if (!this.#canvasStarted) {
             setTimeout(() => { this.#canvasStarted = true }, 3000);
@@ -322,6 +325,8 @@ class Canvas1 {
     #maxMultiplier = 1.003;
     #xZoom = 30;
     bucketSize;
+    #minQty;
+    maxQty;
     #autoScale = true;
     #panXoffset = 0;
     #panYoffset = 0;
@@ -329,7 +334,7 @@ class Canvas1 {
     #nextKlineTrades = [];
     #gotHistKlines = false;
     #gotHistTrades = false;
-    #gettingHistTrades = false;
+    #gettingHistTrades = false; 
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
@@ -337,8 +342,6 @@ class Canvas1 {
         this.#width = width;
         this.#height = height;
         this.#minuteWidth = Math.round((1 * 60 * 1000) / (30 * 60 * 1000) * (this.#width - this.#rectangleWidth));
-        this.tradesDrawType = 0;
-        this.maxQuantity = 20;
     };
 
     panXY(dx, dy) { 
@@ -393,6 +396,8 @@ class Canvas1 {
         this.#gotHistKlines = false;
         this.#gotHistTrades = false;
         this.#gettingHistTrades = false;
+        this.#minQty = this.#controller.minQty;
+        this.maxQty = 0;
     }
     resolveHistData(type, data) {
         if (type === 'klines') {
@@ -488,7 +493,6 @@ class Canvas1 {
             const endTime = this.#currentDataPoint.startTime - 1;
             this.#controller.getHistKlines(startTime, endTime, limit);
         };
-
         if (this.#gotHistKlines && !this.#gettingHistTrades && !this.#gotHistTrades) {
             this.getHistTrades(currentSymbol);
         };
@@ -516,15 +520,6 @@ class Canvas1 {
     }                      
     drawDataPoint(trades, kline, x) {
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
-
-        const yOpen = Math.round(this.#height - (kline.openPrice - this.#yMin) * scaleFactor);
-        const yHigh = Math.round(this.#height - (kline.highPrice - this.#yMin) * scaleFactor);
-        const yLow = Math.round(this.#height - (kline.lowPrice - this.#yMin) * scaleFactor);
-        const yClose = Math.round(this.#height - (kline.closePrice - this.#yMin) * scaleFactor);
-
-        this.drawKlineAt(x, yHigh - 2);
-        this.drawKlineAt(x, yLow + 2);
-    
         if (trades) {
             const flatTrades = [].concat(...trades);
             // Group trades by rounded aggTrade.y and aggTrade.m and sum the quantities
@@ -538,7 +533,7 @@ class Canvas1 {
                 return acc;
             }, {});
             const maxQuantity = Math.max(...Object.values(groupedTrades).map(trade => trade.q));
-            this.maxQuantity = maxQuantity > this.maxQuantity ? maxQuantity : this.maxQuantity;
+            this.maxQty = maxQuantity > this.maxQty ? maxQuantity : this.maxQty;
         
             Object.values(groupedTrades).forEach((aggTrade) => {
                 const yTradePrice = Math.round(this.#height - (aggTrade.y - this.#yMin) * scaleFactor);
@@ -546,6 +541,13 @@ class Canvas1 {
                 this.drawTradesAt(x, yTradePrice, aggTrade.m, quantityScaled);
             });
         };
+        const yOpen = Math.round(this.#height - (kline.openPrice - this.#yMin) * scaleFactor);
+        const yHigh = Math.round(this.#height - (kline.highPrice - this.#yMin) * scaleFactor);
+        const yLow = Math.round(this.#height - (kline.lowPrice - this.#yMin) * scaleFactor);
+        const yClose = Math.round(this.#height - (kline.closePrice - this.#yMin) * scaleFactor);
+
+        this.drawKlineAt(x, yHigh - 2);
+        this.drawKlineAt(x, yLow + 2);
 
         this.#ctx.beginPath();
         this.#ctx.moveTo(x + this.#minuteWidth/2, yOpen);
@@ -579,11 +581,10 @@ class Canvas1 {
         this.#ctx.stroke();
     }    
     scaleQuantity(quantity) {
-        const minQuantity = 0.001;
         const minLineLength = 0;
-        const maxLineLength = this.#minuteWidth/2 - 4 ;
+        const maxLineLength = this.#minuteWidth/2 - 4;
     
-        return minLineLength + (quantity - minQuantity) * (maxLineLength - minLineLength) / (this.maxQuantity - minQuantity);
+        return minLineLength + (quantity - this.#minQty) * (maxLineLength - minLineLength) / (this.maxQty - this.#minQty);
     }  
 }
 class Canvas2 {
@@ -600,13 +601,14 @@ class Canvas2 {
     bucketSize;
     #autoScale = true;
     #panYoffset = 0;
+    #maxQuantity;
+    #defaultMaxQty;
     constructor(controller, ctx, canvas, width, height) {
         this.#controller = controller;
         this.#ctx = ctx;
         this.canvas = canvas;
         this.#width = width;
         this.#height = height;
-        this.maxQuantity = 20;
     }
 
     panY(dy) { 
@@ -641,6 +643,8 @@ class Canvas2 {
         this.#yMin = null;
         this.#yMax = null;
         this.#autoScale = true;
+        this.#maxQuantity = Math.round(1000000 / this.#controller.initialPrice);
+        this.#defaultMaxQty = this.#maxQuantity;
     }     
     updateData(kline, depth) {
         const { k: { o: openPrice, h: highPrice, l: lowPrice, c: closePrice } } = kline;
@@ -661,12 +665,11 @@ class Canvas2 {
 
         const scaleFactor = this.#height / (this.#yMax - this.#yMin);
         const { closePrice, openPrice } = this.#kline;
-        
         const yClose = Math.round(this.#height - (closePrice - this.#yMin) * scaleFactor);
         const yOpen = Math.round(this.#height - (openPrice - this.#yMin) * scaleFactor);
 
         // orderbook
-        this.maxQuantity = 20;
+        this.maxQuantity = this.#defaultMaxQty;
         if (this.#depth.asks && this.#depth.bids) {
             const groupByBucketSize = (orders) => {
                 return orders.reduce((grouped, order) => {
@@ -676,18 +679,16 @@ class Canvas2 {
                     return grouped;
                 }, {});
             };
-
             const groupedAsks = groupByBucketSize(this.#depth.asks);
             const groupedBids = groupByBucketSize(this.#depth.bids);
 
             const quantities = [...Object.values(groupedAsks), ...Object.values(groupedBids)];
-            this.maxQuantity = Math.max.apply(null, quantities);
+            this.maxQuantity = Math.max(this.#defaultMaxQty, ...quantities);
 
             Object.entries(groupedAsks).forEach(([price, quantity]) => {
                 const y = Math.round(this.#height - (price - this.#yMin) * scaleFactor);        
                 this.drawLineAt(y, '#C0504E', quantity);
             });
-
             Object.entries(groupedBids).forEach(([price, quantity]) => {
                 const y = Math.round(this.#height - (price - this.#yMin) * scaleFactor);        
                 this.drawLineAt(y, '#51CDA0', quantity);
