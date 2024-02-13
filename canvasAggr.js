@@ -407,6 +407,7 @@ class Canvas1 {
   #gotHistKlines = false;
   #gotHistTrades = false;
   #gettingHistTrades = false;
+  #scaleFactor;
   constructor(controller, ctx, canvas, width, height) {
     this.#controller = controller;
     this.#ctx = ctx;
@@ -643,6 +644,7 @@ class Canvas1 {
         ((Number(highPrice) + Number(lowPrice)) / 2) * this.#maxMultiplier,
         highPrice
       ) + this.#panYoffset;
+    this.#scaleFactor = this.#height / (this.#yMax - this.#yMin);
 
     this.drawStart();
 
@@ -672,15 +674,18 @@ class Canvas1 {
     const leftX = 0 - this.#panXoffset;
     const rightX = this.#width - this.#panXoffset;
 
+    this.maxQty = 0;
     if (this.#dataPoints.length > 0) {
-      this.maxQty = 0;
       this.#dataPoints.forEach((data, index) => {
         const x = Math.round(
           ((data.startTime - timeDifference) / zoomScale) * pointWidth
         );
         if (x >= leftX && x <= rightX) {
-          const trades = this.#klinesTrades[index];
-          this.drawDataPoint(trades, data, x + this.#panXoffset);
+          this.drawDataPoint(
+            this.#klinesTrades[index],
+            data,
+            x + this.#panXoffset
+          );
         }
       });
     }
@@ -691,7 +696,6 @@ class Canvas1 {
     );
   }
   drawDataPoint(trades, kline, x) {
-    const scaleFactor = this.#height / (this.#yMax - this.#yMin);
     if (trades) {
       const flatTrades = [].concat(...trades);
       // Group trades by rounded aggTrade.y and aggTrade.m and sum the quantities
@@ -712,23 +716,23 @@ class Canvas1 {
 
       Object.values(groupedTrades).forEach((aggTrade) => {
         const yTradePrice = Math.round(
-          this.#height - (aggTrade.y - this.#yMin) * scaleFactor
+          this.#height - (aggTrade.y - this.#yMin) * this.#scaleFactor
         );
         const quantityScaled = this.scaleQuantity(aggTrade.q);
         this.drawTradesAt(x, yTradePrice, aggTrade.m, quantityScaled);
       });
     }
     const yOpen = Math.round(
-      this.#height - (kline.openPrice - this.#yMin) * scaleFactor
+      this.#height - (kline.openPrice - this.#yMin) * this.#scaleFactor
     );
     const yHigh = Math.round(
-      this.#height - (kline.highPrice - this.#yMin) * scaleFactor
+      this.#height - (kline.highPrice - this.#yMin) * this.#scaleFactor
     );
     const yLow = Math.round(
-      this.#height - (kline.lowPrice - this.#yMin) * scaleFactor
+      this.#height - (kline.lowPrice - this.#yMin) * this.#scaleFactor
     );
     const yClose = Math.round(
-      this.#height - (kline.closePrice - this.#yMin) * scaleFactor
+      this.#height - (kline.closePrice - this.#yMin) * this.#scaleFactor
     );
 
     this.drawKlineAt(x, yHigh - 2);
@@ -794,6 +798,7 @@ class Canvas2 {
   #panYoffset = 0;
   #maxQuantity;
   #defaultMaxQty;
+  #scaleFactor;
   constructor(controller, ctx, canvas, width, height) {
     this.#controller = controller;
     this.#ctx = ctx;
@@ -856,21 +861,22 @@ class Canvas2 {
         ((Number(highPrice) + Number(lowPrice)) / 2) * this.#maxMultiplier,
         highPrice
       ) + this.#panYoffset;
+    this.#scaleFactor = this.#height / (this.#yMax - this.#yMin);
 
     this.drawStart();
+
     this.#controller.drawScale(this.#yMin, this.#yMax);
   }
 
   drawStart() {
     this.#ctx.clearRect(0, 0, this.#width, this.#height);
 
-    const scaleFactor = this.#height / (this.#yMax - this.#yMin);
     const { closePrice, openPrice } = this.#kline;
     const yClose = Math.round(
-      this.#height - (closePrice - this.#yMin) * scaleFactor
+      this.#height - (closePrice - this.#yMin) * this.#scaleFactor
     );
     const yOpen = Math.round(
-      this.#height - (openPrice - this.#yMin) * scaleFactor
+      this.#height - (openPrice - this.#yMin) * this.#scaleFactor
     );
 
     // orderbook
@@ -895,11 +901,15 @@ class Canvas2 {
       this.maxQuantity = Math.max(this.#defaultMaxQty, ...quantities);
 
       Object.entries(groupedAsks).forEach(([price, quantity]) => {
-        const y = Math.round(this.#height - (price - this.#yMin) * scaleFactor);
+        const y = Math.round(
+          this.#height - (price - this.#yMin) * this.#scaleFactor
+        );
         this.drawLineAt(y, "#C0504E", quantity);
       });
       Object.entries(groupedBids).forEach(([price, quantity]) => {
-        const y = Math.round(this.#height - (price - this.#yMin) * scaleFactor);
+        const y = Math.round(
+          this.#height - (price - this.#yMin) * this.#scaleFactor
+        );
         this.drawLineAt(y, "#51CDA0", quantity);
       });
     }
@@ -964,6 +974,7 @@ class Canvas3 {
   #xZoom = 30;
   #panXoffset = 0;
   #gotHistKlines = false;
+  #scaleFactor;
   constructor(controller, ctx, canvas, width, height) {
     this.#controller = controller;
     this.#ctx = ctx;
@@ -1038,12 +1049,10 @@ class Canvas3 {
     this.#currentDataPoint = { startTime, endTime, buyVolume, sellVolume };
     this.drawStart();
   }
-
   drawStart() {
     this.#ctx.clearRect(0, 0, this.#width, this.#height);
 
     const pointWidth = Math.round(this.#width - this.#minuteWidth);
-
     const zoomScale = this.#xZoom * 60 * 1000;
     const timeDifference = this.#currentDataPoint.startTime - zoomScale;
 
@@ -1060,6 +1069,7 @@ class Canvas3 {
       (max, data) => Math.max(max, data.buyVolume, data.sellVolume),
       0
     );
+    this.#scaleFactor = (this.#height - 20) / this.#yMax;
 
     if (visibleDataPoints.length > 0) {
       visibleDataPoints.forEach((data) => {
@@ -1072,20 +1082,18 @@ class Canvas3 {
     this.drawDataPoint(this.#currentDataPoint, pointWidth + this.#panXoffset);
   }
   drawDataPoint(kline, x) {
-    const scaleFactor = (this.#height - 20) / this.#yMax;
-
     const yBuyVolume = Math.max(
       0,
       Math.min(
         this.#height - 20,
-        Math.round(this.#height - 20 - kline.buyVolume * scaleFactor)
+        Math.round(this.#height - 20 - kline.buyVolume * this.#scaleFactor)
       )
     );
     const ySellVolume = Math.max(
       0,
       Math.min(
         this.#height - 20,
-        Math.round(this.#height - 20 - kline.sellVolume * scaleFactor)
+        Math.round(this.#height - 20 - kline.sellVolume * this.#scaleFactor)
       )
     );
 
