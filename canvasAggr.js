@@ -388,10 +388,8 @@ class Canvas1 {
   #klinesTrades = [];
   #currentDataPoint;
   #currentKlineTrades = [];
-  #lastOpenPrice;
   #yMin;
   #yMax;
-  #rectangleWidth = 60;
   #minuteWidth;
   #minMultiplier = 0.997;
   #maxMultiplier = 1.003;
@@ -414,10 +412,7 @@ class Canvas1 {
     this.canvas = canvas;
     this.#width = width;
     this.#height = height;
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (30 * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
 
   panXY(dx, dy) {
@@ -445,11 +440,7 @@ class Canvas1 {
     const minZoom = 30;
     const maxZoom = 10;
     this.#xZoom = Math.round(minZoom + (maxZoom - minZoom) * zoomLevel);
-
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (this.#xZoom * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
   resetZoomAndPan() {
     this.#autoScale = true;
@@ -458,17 +449,13 @@ class Canvas1 {
     this.#minMultiplier = 0.997;
     this.#maxMultiplier = 1.003;
     this.#xZoom = 30;
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (this.#xZoom * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
   resetData() {
     this.#dataPoints = [];
     this.#klinesTrades = [];
     this.#currentDataPoint = null;
     this.#currentKlineTrades = [];
-    this.#lastOpenPrice = null;
     this.#yMin = null;
     this.#yMax = null;
     this.#autoScale = true;
@@ -479,6 +466,7 @@ class Canvas1 {
     this.#gotHistTrades = false;
     this.#gettingHistTrades = false;
     this.#minQty = this.#controller.minQty;
+    this.maxQty = 0;
   }
   resolveHistData(type, data) {
     if (type === "klines") {
@@ -649,10 +637,8 @@ class Canvas1 {
     this.drawStart();
 
     if (this.#dataPoints.length < 60 && !this.#gotHistKlines) {
-      console.log("getting historical klines...");
       const startTime = null;
       const limit = 60 - this.#dataPoints.length;
-      //const endTime = this.#dataPoints[0] ? this.#dataPoints[0].startTime - 1 : null;
       const endTime = this.#currentDataPoint.startTime - 1;
       this.#controller.getHistKlines(startTime, endTime, limit);
     }
@@ -674,7 +660,6 @@ class Canvas1 {
     const leftX = 0 - this.#panXoffset;
     const rightX = this.#width - this.#panXoffset;
 
-    this.maxQty = 0;
     if (this.#dataPoints.length > 0) {
       this.#dataPoints.forEach((data, index) => {
         const x = Math.round(
@@ -689,16 +674,20 @@ class Canvas1 {
         }
       });
     }
-    this.drawDataPoint(
-      this.#currentKlineTrades,
-      this.#currentDataPoint,
-      pointWidth + this.#panXoffset
-    );
+    if (
+      pointWidth + this.#panXoffset >= leftX &&
+      pointWidth + this.#panXoffset <= rightX
+    ) {
+      this.drawDataPoint(
+        this.#currentKlineTrades,
+        this.#currentDataPoint,
+        pointWidth + this.#panXoffset
+      );
+    }
   }
   drawDataPoint(trades, kline, x) {
     if (trades) {
       const flatTrades = [].concat(...trades);
-      // Group trades by rounded aggTrade.y and aggTrade.m and sum the quantities
       const groupedTrades = flatTrades.reduce((acc, aggTrade) => {
         const roundedY =
           Math.round(aggTrade.y / this.bucketSize) * this.bucketSize;
@@ -753,8 +742,8 @@ class Canvas1 {
   }
   drawKlineAt(x, y) {
     this.#ctx.beginPath();
-    this.#ctx.moveTo(x + 5, y);
-    this.#ctx.lineTo(x + this.#minuteWidth - 5, y);
+    this.#ctx.moveTo(x + 2, y);
+    this.#ctx.lineTo(x + this.#minuteWidth - 2, y);
     this.#ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
     this.#ctx.stroke();
   }
@@ -969,7 +958,6 @@ class Canvas3 {
   #currentDataPoint;
   #lastStartTime;
   #yMax;
-  #rectangleWidth = 60;
   #minuteWidth;
   #xZoom = 30;
   #panXoffset = 0;
@@ -981,10 +969,7 @@ class Canvas3 {
     this.canvas = canvas;
     this.#width = width;
     this.#height = height;
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (this.#xZoom * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
 
   panX(dx) {
@@ -993,20 +978,13 @@ class Canvas3 {
   zoomX(zoomLevel) {
     const minZoom = 30;
     const maxZoom = 10;
-    this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
-
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (this.#xZoom * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#xZoom = Math.round(minZoom + (maxZoom - minZoom) * zoomLevel);
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
   resetZoomAndPan() {
     this.#panXoffset = 0;
     this.#xZoom = 30;
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (this.#xZoom * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
   resetData() {
     this.#dataPoints = [];
@@ -1159,7 +1137,6 @@ class Canvas4 {
   #yMin_OI;
   #yMax_CVD;
   #yMin_CVD;
-  #rectangleWidth = 60;
   #minuteWidth;
   #xZoom = 30;
   #panXoffset = 0;
@@ -1174,10 +1151,7 @@ class Canvas4 {
     this.canvas = canvas;
     this.#width = width;
     this.#height = height;
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (this.#xZoom * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
 
   panX(dx) {
@@ -1186,20 +1160,13 @@ class Canvas4 {
   zoomX(zoomLevel) {
     const minZoom = 30;
     const maxZoom = 10;
-    this.#xZoom = minZoom + (maxZoom - minZoom) * zoomLevel;
-
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (this.#xZoom * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#xZoom = Math.round(minZoom + (maxZoom - minZoom) * zoomLevel);
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
   resetZoomAndPan() {
     this.#panXoffset = 0;
     this.#xZoom = 30;
-    this.#minuteWidth = Math.round(
-      ((1 * 60 * 1000) / (this.#xZoom * 60 * 1000)) *
-        (this.#width - this.#rectangleWidth)
-    );
+    this.#minuteWidth = Math.round((1 / this.#xZoom) * this.#width);
   }
   resetData() {
     this.#dataPoints = [];
@@ -1277,7 +1244,6 @@ class Canvas4 {
     this.#ctx.clearRect(0, 0, this.#width, this.#height);
 
     const pointWidth = Math.round(this.#width - this.#minuteWidth);
-
     const zoomScale = this.#xZoom * 60 * 1000;
     const timeDifference = this.#currentDataPoint.startTime - zoomScale;
 
