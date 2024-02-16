@@ -653,35 +653,31 @@ class Canvas1 {
   drawStart() {
     this.#ctx.clearRect(0, 0, this.#width, this.#height);
 
-    const pointWidth = Math.round(this.#width - this.#minuteWidth);
     const zoomScale = this.#xZoom * 60 * 1000;
-    const timeDifference = this.#currentDataPoint.startTime - zoomScale;
+    const timeDifference = this.#currentDataPoint.startTime + 60000 - zoomScale;
 
     const leftX = 0 - this.#panXoffset;
     const rightX = this.#width - this.#panXoffset;
 
-    if (this.#dataPoints.length > 0) {
-      this.#dataPoints.forEach((data, index) => {
-        const x = Math.round(
-          ((data.startTime - timeDifference) / zoomScale) * pointWidth
+    this.#dataPoints.forEach((data, index) => {
+      const x = Math.round(
+        ((data.startTime - timeDifference) / zoomScale) * this.#width
+      );
+      if (x >= leftX && x <= rightX) {
+        this.drawDataPoint(
+          this.#klinesTrades[index],
+          data,
+          x + this.#panXoffset
         );
-        if (x >= leftX && x <= rightX) {
-          this.drawDataPoint(
-            this.#klinesTrades[index],
-            data,
-            x + this.#panXoffset
-          );
-        }
-      });
-    }
-    if (
-      pointWidth + this.#panXoffset >= leftX &&
-      pointWidth + this.#panXoffset <= rightX
-    ) {
+      }
+    });
+
+    const currentKlineX = this.#width - this.#minuteWidth + this.#panXoffset;
+    if (currentKlineX >= leftX && currentKlineX <= rightX) {
       this.drawDataPoint(
         this.#currentKlineTrades,
         this.#currentDataPoint,
-        pointWidth + this.#panXoffset
+        currentKlineX
       );
     }
   }
@@ -742,8 +738,8 @@ class Canvas1 {
   }
   drawKlineAt(x, y) {
     this.#ctx.beginPath();
-    this.#ctx.moveTo(x + 2, y);
-    this.#ctx.lineTo(x + this.#minuteWidth - 2, y);
+    this.#ctx.moveTo(x + 1, y);
+    this.#ctx.lineTo(x + this.#minuteWidth - 1, y);
     this.#ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
     this.#ctx.stroke();
   }
@@ -1029,17 +1025,17 @@ class Canvas3 {
   }
   drawStart() {
     this.#ctx.clearRect(0, 0, this.#width, this.#height);
+    this.#scaleFactor = (this.#height - 20) / this.#yMax;
 
-    const pointWidth = Math.round(this.#width - this.#minuteWidth);
     const zoomScale = this.#xZoom * 60 * 1000;
-    const timeDifference = this.#currentDataPoint.startTime - zoomScale;
+    const timeDifference = this.#currentDataPoint.startTime + 60000 - zoomScale;
 
     const leftX = 0 - this.#panXoffset;
     const rightX = this.#width - this.#panXoffset;
 
     const visibleDataPoints = this.#dataPoints.filter((data) => {
       const x = Math.round(
-        ((data.startTime - timeDifference) / zoomScale) * pointWidth
+        ((data.startTime - timeDifference) / zoomScale) * this.#width
       );
       return x >= leftX && x <= rightX;
     });
@@ -1047,17 +1043,17 @@ class Canvas3 {
       (max, data) => Math.max(max, data.buyVolume, data.sellVolume),
       0
     );
-    this.#scaleFactor = (this.#height - 20) / this.#yMax;
 
-    if (visibleDataPoints.length > 0) {
-      visibleDataPoints.forEach((data) => {
-        const x = Math.round(
-          ((data.startTime - timeDifference) / zoomScale) * pointWidth
-        );
-        this.drawDataPoint(data, x + this.#panXoffset);
-      });
-    }
-    this.drawDataPoint(this.#currentDataPoint, pointWidth + this.#panXoffset);
+    visibleDataPoints.forEach((data) => {
+      const x = Math.round(
+        ((data.startTime - timeDifference) / zoomScale) * this.#width
+      );
+      this.drawDataPoint(data, x + this.#panXoffset);
+    });
+    this.drawDataPoint(
+      this.#currentDataPoint,
+      this.#width - this.#minuteWidth + this.#panXoffset
+    );
   }
   drawDataPoint(kline, x) {
     const yBuyVolume = Math.max(
@@ -1243,48 +1239,45 @@ class Canvas4 {
   drawStart() {
     this.#ctx.clearRect(0, 0, this.#width, this.#height);
 
-    const pointWidth = Math.round(this.#width - this.#minuteWidth);
     const zoomScale = this.#xZoom * 60 * 1000;
-    const timeDifference = this.#currentDataPoint.startTime - zoomScale;
+    const timeDifference = this.#currentDataPoint.startTime + 60000 - zoomScale;
 
     const leftX = 0 - this.#panXoffset;
     const rightX = this.#width - this.#panXoffset;
 
-    if (this.#dataPoints.length > 0) {
-      this.#dataPoints.forEach((data, index) => {
-        const x = Math.round(
-          ((data.startTime - timeDifference) / zoomScale) * pointWidth
-        );
-        if (x >= leftX && x <= rightX) {
-          if (this.#oiEnabled) {
-            const y =
+    this.#dataPoints.forEach((data, index) => {
+      const x = Math.round(
+        ((data.startTime - timeDifference) / zoomScale) * this.#width
+      );
+      if (x >= leftX && x <= rightX) {
+        if (this.#oiEnabled) {
+          const y =
+            this.#height -
+            (this.#OIDataPoints[index] - this.#yMin_OI) * this.#scaleFactor_OI;
+          this.drawOIPoint(x + this.#panXoffset, y);
+        }
+        if (this.#cvdEnabled) {
+          const y =
+            this.#height -
+            (data.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD;
+          if (index > 0) {
+            const prevY =
               this.#height -
-              (this.#OIDataPoints[index] - this.#yMin_OI) *
-                this.#scaleFactor_OI;
-            this.drawOIPoint(x + this.#panXoffset, y);
-          }
-          if (this.#cvdEnabled) {
-            const y =
-              this.#height -
-              (data.cumVolumeDelta - this.#yMin_CVD) * this.#scaleFactor_CVD;
-            if (index > 0) {
-              const prevY =
-                this.#height -
-                (this.#dataPoints[index - 1].cumVolumeDelta - this.#yMin_CVD) *
-                  this.#scaleFactor_CVD;
-              this.drawCVDLine(
-                x + this.#panXoffset,
-                prevY,
-                x + this.#minuteWidth + this.#panXoffset,
-                y
-              );
-            }
+              (this.#dataPoints[index - 1].cumVolumeDelta - this.#yMin_CVD) *
+                this.#scaleFactor_CVD;
+            this.drawCVDLine(
+              x + this.#panXoffset,
+              prevY,
+              x + this.#minuteWidth + this.#panXoffset,
+              y
+            );
           }
         }
-      });
-    }
+      }
+    });
+
     if (this.#cvdEnabled) {
-      const x = pointWidth + this.#panXoffset;
+      const x = this.#width - this.#minuteWidth + this.#panXoffset;
       if (x >= leftX && x <= rightX) {
         const y =
           this.#height -
