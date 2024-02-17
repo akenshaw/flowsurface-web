@@ -305,7 +305,7 @@ export class CanvasController {
       }
     );
   }
-  async fetchHistTrades(symbol, startTime, endTime, limit) {
+  async fetchHistTrades(symbol, startTime, endTime, limit, retryCount = 0) {
     try {
       const url = `https://fapi.binance.com/fapi/v1/aggTrades?symbol=${symbol}${
         startTime ? "&startTime=" + startTime : ""
@@ -313,8 +313,22 @@ export class CanvasController {
         limit ? "&limit=" + limit : ""
       }`;
       const response = await fetch(url);
+      if (response.status === 429) {
+        const waitTime = Math.pow(2, retryCount) * 1000;
+        console.log(
+          `Rate limit exceeded, pausing for ${waitTime / 1000} seconds...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        return this.fetchHistTrades(
+          symbol,
+          startTime,
+          endTime,
+          limit,
+          retryCount + 1
+        );
+      }
       const data = await response.json();
-      return data.map((trade) => {
+      const trades = data.map((trade) => {
         return {
           x: trade.T,
           y: parseFloat(trade.p),
@@ -322,6 +336,8 @@ export class CanvasController {
           m: trade.m,
         };
       });
+      console.log(`Fetched ${trades.length} trades.`);
+      return trades;
     } catch (error) {
       console.log(error, url);
       return NaN;
@@ -541,7 +557,7 @@ class Canvas1 {
         this.#dataPoints.length,
         "klines..."
       );
-      do {
+      while (true) {
         if (symbol != currentSymbol) {
           console.log("stopped fetching historical trades for", symbol);
           this.#gettingHistTrades = false;
@@ -555,15 +571,19 @@ class Canvas1 {
             1000
           );
           trades = trades.concat(fetchedTrades);
-          lastTradeTime = fetchedTrades[fetchedTrades.length - 1].x;
-          startTime = lastTradeTime + 1;
-          console.log("fetched", fetchedTrades.length, "trades");
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          if (fetchedTrades.length > 0) {
+            lastTradeTime = fetchedTrades[fetchedTrades.length - 1].x;
+            startTime = lastTradeTime + 1;
+          }
+          if (fetchedTrades.length < 1000) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 400));
         } catch (error) {
           console.log(error, startTime, endTime);
           break;
         }
-      } while (lastTradeTime < endTime);
+      }
       this.#klinesTrades[i] = trades;
     }
     this.#gettingHistTrades = false;
@@ -1250,12 +1270,6 @@ class Canvas4 {
         ((data.startTime - timeDifference) / zoomScale) * this.#width
       );
       if (x >= leftX && x <= rightX) {
-        if (this.#oiEnabled) {
-          const y =
-            this.#height -
-            (this.#OIDataPoints[index] - this.#yMin_OI) * this.#scaleFactor_OI;
-          this.drawOIPoint(x + this.#panXoffset, y);
-        }
         if (this.#cvdEnabled) {
           const y =
             this.#height -
@@ -1272,6 +1286,12 @@ class Canvas4 {
               y
             );
           }
+        }
+        if (this.#oiEnabled) {
+          const y =
+            this.#height -
+            (this.#OIDataPoints[index] - this.#yMin_OI) * this.#scaleFactor_OI;
+          this.drawOIPoint(x + this.#panXoffset, y);
         }
       }
     });
