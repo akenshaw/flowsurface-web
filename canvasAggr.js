@@ -721,13 +721,15 @@ class Canvas1 {
       maxQtyKline = Math.max(
         ...Object.values(groupedTrades).map((trade) => trade.q)
       );
-      Object.values(groupedTrades).forEach((aggTrade) => {
-        const yTradePrice = Math.round(
-          this.#height - (aggTrade.y - this.#yMin) * this.#scaleFactor
-        );
-        const quantityScaled = this.scaleQuantity(aggTrade.q);
-        this.drawTradesAt(x, yTradePrice, aggTrade.m, quantityScaled);
-      });
+      if (this.maxQty !== 0) {
+        Object.values(groupedTrades).forEach((aggTrade) => {
+          const yTradePrice = Math.round(
+            this.#height - (aggTrade.y - this.#yMin) * this.#scaleFactor
+          );
+          const quantityScaled = this.scaleQuantity(aggTrade.q);
+          this.drawTradesAt(x, yTradePrice, aggTrade.m, quantityScaled);
+        });
+      }
     }
     const yOpen = Math.round(
       this.#height - (kline.openPrice - this.#yMin) * this.#scaleFactor
@@ -752,7 +754,7 @@ class Canvas1 {
       yClose < yOpen ? "rgba(155, 230, 209, 0.5)" : "rgba(230, 161, 160, 0.5)";
     this.#ctx.shadowBlur = 5;
     this.#ctx.strokeStyle =
-      yClose < yOpen ? "rgba(155, 230, 209, 0.5)" : "rgba(230, 161, 160, 0.5)";
+      yClose < yOpen ? "rgba(155, 230, 209, 0.7)" : "rgba(230, 161, 160, 0.7)";
     this.#ctx.stroke();
     //reset shadow
     this.#ctx.shadowColor = "transparent";
