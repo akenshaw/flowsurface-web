@@ -679,29 +679,33 @@ class Canvas1 {
     const leftX = 0 - this.#panXoffset;
     const rightX = this.#width - this.#panXoffset;
 
+    let maxQtyInViewport = 0;
     this.#dataPoints.forEach((data, index) => {
       const x = Math.round(
         ((data.startTime - timeDifference) / zoomScale) * this.#width
       );
       if (x >= leftX && x <= rightX) {
-        this.drawDataPoint(
+        const maxQtyDataPoint = this.drawDataPoint(
           this.#klinesTrades[index],
           data,
           x + this.#panXoffset
         );
+        maxQtyInViewport = Math.max(maxQtyInViewport, maxQtyDataPoint);
       }
     });
-
-    const currentKlineX = this.#width - this.#minuteWidth + this.#panXoffset;
+    const currentKlineX = this.#width - this.#minuteWidth;
     if (currentKlineX >= leftX && currentKlineX <= rightX) {
-      this.drawDataPoint(
+      const maxQtyCurrentKline = this.drawDataPoint(
         this.#currentKlineTrades,
         this.#currentDataPoint,
-        currentKlineX
+        currentKlineX + this.#panXoffset
       );
+      maxQtyInViewport = Math.max(maxQtyInViewport, maxQtyCurrentKline);
     }
+    this.maxQty = maxQtyInViewport;
   }
   drawDataPoint(trades, kline, x) {
+    let maxQtyKline = 0;
     if (trades) {
       const flatTrades = [].concat(...trades);
       const groupedTrades = flatTrades.reduce((acc, aggTrade) => {
@@ -714,11 +718,9 @@ class Canvas1 {
         acc[key].q += aggTrade.q;
         return acc;
       }, {});
-      const maxQtyKline = Math.max(
+      maxQtyKline = Math.max(
         ...Object.values(groupedTrades).map((trade) => trade.q)
       );
-      this.maxQty = maxQtyKline > this.maxQty ? maxQtyKline : this.maxQty;
-
       Object.values(groupedTrades).forEach((aggTrade) => {
         const yTradePrice = Math.round(
           this.#height - (aggTrade.y - this.#yMin) * this.#scaleFactor
@@ -755,6 +757,8 @@ class Canvas1 {
     //reset shadow
     this.#ctx.shadowColor = "transparent";
     this.#ctx.shadowBlur = 0;
+
+    return maxQtyKline;
   }
   drawKlineAt(x, y) {
     this.#ctx.beginPath();
@@ -872,7 +876,6 @@ class Canvas2 {
 
     this.#controller.drawScale(this.#yMin, this.#yMax);
   }
-
   drawStart() {
     this.#ctx.clearRect(0, 0, this.#width, this.#height);
 
