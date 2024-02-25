@@ -1,4 +1,4 @@
-![Screenshot 2024-01-21 at 5 55 46 PM 1](https://github.com/akenshaw/flowsurface/assets/63060680/7905e682-03de-4e82-8047-ce882859b7a2)
+![Screenshot 2024-02-23 at 8 02 31 PM](https://github.com/akenshaw/flowsurface/assets/63060680/322b71a6-b79b-4bed-9684-be6d595a25da)
 - Works completely on client-side, rendering happens on 2D canvas
 #
 ### Currently supports
@@ -17,4 +17,5 @@ After the controller receives these 3 streams and sends them to their relevant c
   - Volume gets its data from the klines streams.
   - CVD gets from the trades buffer by counting up the buy/sell trade quantities.
   - OI works a bit differently as it doesn't have any WS stream. For now, it gets fetched at the end of each 1 minute kline, effectively showing the amount at its exact timestamp on the x-axis.
+
 
