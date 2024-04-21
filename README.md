@@ -1,3 +1,5 @@
+⚠️ this project moved to [https://github.com/akenshaw/](https://github.com/akenshaw/flowsurface-rs)
+
 ![Screenshot 2024-02-23 at 8 02 31 PM](https://github.com/akenshaw/flowsurface/assets/63060680/322b71a6-b79b-4bed-9684-be6d595a25da)
 - Works completely on client-side, rendering happens on 2D canvas
 #
