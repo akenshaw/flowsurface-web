@@ -418,8 +418,6 @@ class Canvas1 {
   #panYoffset = 0;
   #lastKlineEnd = null;
   #nextKlineTrades = [];
-  #gotHistKlines = false;
-  #gotHistTrades = false;
   #gettingHistTrades = false;
   #scaleFactor;
   constructor(controller, ctx, canvas, width, height) {
@@ -478,15 +476,12 @@ class Canvas1 {
     this.#panXoffset = 0;
     this.#panYoffset = 0;
     this.#lastKlineEnd = null;
-    this.#gotHistKlines = false;
-    this.#gotHistTrades = false;
     this.#gettingHistTrades = false;
     this.#minQty = this.#controller.minQty;
     this.maxQty = 0;
   }
   resolveHistData(type, data) {
     if (type === "klines") {
-      this.#gotHistKlines = true;
       data.forEach((kline) => {
         const [
           startTime,
@@ -523,7 +518,7 @@ class Canvas1 {
     const endTime = Date.now();
     let trades = [];
     let lastTradeTime = 0;
-    console.log("getting current trades...");
+
     do {
       try {
         const fetchedTrades = await this.#controller.fetchHistTrades(
@@ -587,7 +582,6 @@ class Canvas1 {
       this.#klinesTrades[i] = trades;
     }
     this.#gettingHistTrades = false;
-    this.#gotHistTrades = true;
   }
   updateData(kline, aggTrades) {
     const {
@@ -656,16 +650,14 @@ class Canvas1 {
 
     this.drawStart();
 
-    if (this.#dataPoints.length < 60 && !this.#gotHistKlines) {
+    if (this.#dataPoints.length < 60) {
       const startTime = null;
       const limit = 60 - this.#dataPoints.length;
       const endTime = this.#currentDataPoint.startTime - 1;
       this.#controller.getHistKlines(startTime, endTime, limit);
-    }
-    if (
-      this.#gotHistKlines &&
+    } else if (
       !this.#gettingHistTrades &&
-      !this.#gotHistTrades
+      this.#klinesTrades[this.#dataPoints.length - 1].length === 0
     ) {
       this.getHistTrades(currentSymbol);
     }
