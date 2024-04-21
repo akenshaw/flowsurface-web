@@ -1,8 +1,5 @@
+// tickers table fetch
 export async function combineDicts() {
-  let currentTime = Date.now();
-  let startTime = currentTime - 25 * 60 * 60 * 1000;
-  let endTime = startTime + 60 * 60 * 1000;
-
   let combined_dict = {};
 
   const [fr_dict, turnovers_dict] = await Promise.all([
@@ -29,23 +26,31 @@ export async function combineDicts() {
         "SRMUSDT",
       ].includes(symbol) && !symbol.includes("_")
   );
-  const hist_OI_promises = symbols.map((symbol) =>
-    fetch_hist_OI(symbol, startTime, endTime)
-  );
-  const hist_OI_data_arr = await Promise.all(hist_OI_promises);
-
-  symbols.forEach((symbol, i) => {
+  symbols.forEach((symbol) => {
     if (turnovers_dict.hasOwnProperty(symbol)) {
       combined_dict[symbol] = {
         ...fr_dict[symbol],
         ...turnovers_dict[symbol],
-        ...hist_OI_data_arr[i],
       };
     }
   });
   return combined_dict;
 }
+export async function tickersOIfetch(symbols, startTime, endTime) {
+  const hist_OI_promises = symbols.map((symbol) =>
+    fetch_hist_OI(symbol, startTime, endTime)
+  );
+  const hist_OI_data_arr = await Promise.all(hist_OI_promises);
 
+  let hist_OI_dict = {};
+  symbols.forEach((symbol, i) => {
+    hist_OI_dict[symbol] = {
+      ...hist_OI_data_arr[i],
+    };
+  });
+
+  return hist_OI_dict;
+}
 async function fetch_hist_OI(symbol, startTime, endTime) {
   let current_OI;
   try {
@@ -61,10 +66,10 @@ async function fetch_hist_OI(symbol, startTime, endTime) {
 
     return { open_interest: current_OI, OI_24hrChange: OI_24hrChange };
   } catch (error) {
+    console.error(error, symbol);
     return { open_interest: current_OI, OI_24hrChange: NaN };
   }
 }
-
 async function fetch_current_OI(symbol) {
   try {
     const response = await fetch(
@@ -73,11 +78,10 @@ async function fetch_current_OI(symbol) {
     const data = await response.json();
     return Number(data["openInterest"]);
   } catch (error) {
-    console.log(error, symbol);
+    console.error(error, symbol);
     return NaN;
   }
 }
-
 async function fetchPremiumIndexes() {
   let fr_dict = {};
 
@@ -96,7 +100,6 @@ async function fetchPremiumIndexes() {
   }
   return fr_dict;
 }
-
 async function fetch24hrMetrics() {
   let turnovers_dict = {};
 
@@ -113,4 +116,26 @@ async function fetch24hrMetrics() {
     };
   }
   return turnovers_dict;
+}
+export async function fetchMarkPrice(symbol) {
+  const response = await fetch(`https://fapi.binance.com/fapi/v1/premiumIndex`);
+  const data = await response.json();
+  return data.find((x) => x.symbol === symbol)["markPrice"];
+}
+
+export async function fetchTickerInfo(symbol) {
+  const response = await fetch(`https://fapi.binance.com/fapi/v1/exchangeInfo`);
+  const data = await response.json();
+
+  let symbol_info = data["symbols"].find(
+    (x) => x.symbol === symbol.toUpperCase()
+  );
+  if (symbol_info) {
+    return [
+      symbol_info["filters"][0]["tickSize"],
+      symbol_info["filters"][2]["minQty"],
+    ];
+  } else {
+    return null;
+  }
 }
