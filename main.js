@@ -1,5 +1,10 @@
 import { CanvasController } from "./canvasAggr.js";
-import { combineDicts } from "./connectorUtils.js";
+import {
+  combineDicts,
+  fetchTickerInfo,
+  tickersOIfetch,
+  fetchMarkPrice,
+} from "./connectorUtils.js";
 import { WebSocketService } from "./wsBinance.js";
 
 const buttons = ["btn1", "btn2", "btn3", "btn4"];
@@ -34,9 +39,43 @@ input.addEventListener("keyup", function () {
   }
 });
 
+function updateTable() {
+  tickersUpdateBtn.className = "loading-animation";
+  tickersUpdateBtn.disabled = true;
+  combineDicts().then((data) => {
+    generateTable(data);
+
+    let startTime = Date.now() - 25 * 60 * 60 * 1000;
+    let endTime = startTime + 60 * 60 * 1000;
+
+    tickersOIfetch(Object.keys(data), startTime, endTime).then(
+      (hist_OI_data) => {
+        Object.keys(hist_OI_data).forEach((symbol) => {
+          if (data.hasOwnProperty(symbol)) {
+            data[symbol] = {
+              ...data[symbol],
+              ...hist_OI_data[symbol],
+            };
+          }
+        });
+        generateTable(data);
+        tickersUpdateBtn.disabled = false;
+        tickersUpdateBtn.className = "";
+      }
+    );
+    updateLastUpdatedInfo();
+  });
+}
 function canvasStarter(symbol, initialPrice) {
-  startCanvas(symbol, initialPrice);
-  console.log("canvas was started with symbol: " + symbol);
+  if (initialPrice === null) {
+    fetchMarkPrice(symbol).then((price) => {
+      console.log("initial canvas was started with symbol: " + symbol, price);
+      startCanvas(symbol, price);
+    });
+  } else {
+    startCanvas(symbol, initialPrice);
+    console.log("canvas was started with symbol: " + symbol);
+  }
 
   input.value = "";
   searchTerm = "";
@@ -45,48 +84,36 @@ function canvasStarter(symbol, initialPrice) {
   for (let row of rows) {
     row.style.display = "";
   }
-  showTickers();
+  if (tickersMenu.style.display === "block") {
+    showTickers();
+  }
 }
 
-function getCurrentTime() {
-  const now = new Date();
-  const hours = now.getHours().toString().padStart(2, "0");
-  const minutes = now.getMinutes().toString().padStart(2, "0");
-  const seconds = now.getSeconds().toString().padStart(2, "0");
-  return hours + ":" + minutes + ":" + seconds;
-}
 function updateLastUpdatedInfo() {
+  const now = new Date();
+  const currentTime =
+    now.getHours().toString().padStart(2, "0") +
+    ":" +
+    now.getMinutes().toString().padStart(2, "0") +
+    ":" +
+    now.getSeconds().toString().padStart(2, "0");
   const tickersUpdateInfo = document.getElementById("tickers-update-info");
-  tickersUpdateInfo.textContent = "Last updated at " + getCurrentTime();
+  tickersUpdateInfo.textContent = "Last updated at " + currentTime;
 }
 
 const tickersUpdateBtn = document.getElementById("tickers-update-btn");
 tickersUpdateBtn.addEventListener("click", function () {
-  tickersUpdateBtn.className = "loading-animation";
-  tickersUpdateBtn.disabled = true;
-  combineDicts().then((data) => {
-    tickersUpdateBtn.className = "";
-    generateTable(data);
-    updateLastUpdatedInfo();
-    tickersUpdateBtn.disabled = false;
-  });
+  updateTable();
 });
 
 window.onload = function () {
-  tickersUpdateBtn.className = "loading-animation";
-  tickersUpdateBtn.disabled = true;
-  combineDicts().then((data) => {
-    tickersUpdateBtn.className = "";
-    generateTable(data);
-    updateLastUpdatedInfo();
-    tickersUpdateBtn.disabled = false;
-  });
+  updateTable();
+  canvasStarter("BTCUSDT", null);
 };
 
 function showMenu() {
   console.log("show menu");
 }
-
 function showTickers() {
   input.value = "";
   searchTerm = "";
@@ -213,12 +240,20 @@ function generateTable(data) {
     row.cells[2].textContent =
       (Math.round(symbolData.change * 100) / 100).toFixed(2) + "%";
     row.cells[3].textContent = symbolData.funding_rate + "%";
-    row.cells[4].textContent = formatNumber(
-      symbolData.open_interest,
-      "open_interest",
-      symbolData.mark_price
-    );
-    row.cells[5].textContent = symbolData.OI_24hrChange + "%";
+    row.cells[4].textContent =
+      data.hasOwnProperty(symbol) &&
+      data[symbol].hasOwnProperty("open_interest")
+        ? formatNumber(
+            data[symbol].open_interest,
+            "open_interest",
+            data[symbol].mark_price
+          )
+        : "...";
+    row.cells[5].textContent =
+      data.hasOwnProperty(symbol) &&
+      data[symbol].hasOwnProperty("OI_24hrChange")
+        ? data[symbol].OI_24hrChange + "%"
+        : "...";
     row.cells[6].textContent = formatNumber(
       symbolData.volume,
       "volume",
@@ -289,7 +324,7 @@ const webSocketService = new WebSocketService();
 const MainCanvas = new CanvasController(canvasObjects);
 
 function startCanvas(symbol, initialPrice) {
-  fetchExchangeInfo(symbol).then(([tickSize, minQty]) => {
+  fetchTickerInfo(symbol).then(([tickSize, minQty]) => {
     // start websocket, send the data to the controller as it arrives
     webSocketService.createWebSocket(symbol, (data) =>
       MainCanvas.updateData(data)
@@ -301,19 +336,4 @@ function startCanvas(symbol, initialPrice) {
       .dispatchEvent(new Event("change"));
     document.querySelector("#tickerInfo-name").textContent = symbol;
   });
-}
-
-async function fetchExchangeInfo(symbol) {
-  const response = await fetch(`https://fapi.binance.com/fapi/v1/exchangeInfo`);
-  const data = await response.json();
-
-  let symbol_info = data["symbols"].find((x) => x.symbol === symbol);
-  if (symbol_info) {
-    return [
-      symbol_info["filters"][0]["tickSize"],
-      symbol_info["filters"][2]["minQty"],
-    ];
-  } else {
-    return null;
-  }
 }
